@@ -1,0 +1,280 @@
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: 25px 30px;
+}
+#hud button {
+  pointer-events: auto;
+}
+.hud-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand-small {
+  font-weight: 900;
+  font-size: 23px;
+  letter-spacing: 4px;
+  color: var(--gold);
+}
+.brand-small span {
+  display: block;
+  letter-spacing: 2px;
+  font-size: 8px;
+  margin-top: 3px;
+  color: #c4cbb7;
+}
+#session {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  border: 1px solid #c5d3b82b;
+  background: #101f1b99;
+  padding: 10px 14px;
+  color: #bbc5ae;
+}
+.quests {
+  margin-top: 35px;
+  background: linear-gradient(90deg, #101f1ad9, transparent);
+  padding: 17px 18px;
+  max-width: 300px;
+  border-left: 2px solid var(--gold);
+}
+.quests h2 {
+  font:
+    22px Georgia,
+    serif;
+  margin: 10px 0 18px;
+}
+.quest-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #c5cbb9;
+  margin: 13px 0;
+  gap: 18px;
+}
+.quest-line.done {
+  color: #99be89;
+}
+.quest-line b {
+  color: var(--gold);
+  white-space: nowrap;
+}
+#zone {
+  font-size: 10px;
+  color: #9fae98;
+  letter-spacing: 0.5px;
+  margin-top: 22px;
+}
+#notification {
+  position: absolute;
+  left: 50%;
+  top: 105px;
+  transform: translateX(-50%);
+  max-width: 500px;
+  background: #172b23e8;
+  border-bottom: 2px solid var(--gold);
+  padding: 13px 20px;
+  font-size: 12px;
+  text-align: center;
+}
+#notification:empty {
+  display: none;
+}
+#crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: 25px;
+  font-weight: 200;
+  color: #e4d8b4;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 1px 4px #000;
+  line-height: 1;
+}
+#interact {
+  position: absolute;
+  left: 50%;
+  bottom: 27%;
+  transform: translateX(-50%);
+  background: #142b24e6;
+  color: #eed499;
+  font-size: 12px;
+  padding: 10px 15px;
+}
+#interact:empty {
+  display: none;
+}
+.player-panel {
+  position: absolute;
+  bottom: 75px;
+  left: 30px;
+  width: 270px;
+}
+.player-heading {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+#level {
+  color: var(--gold);
+}
+.health-track {
+  background: #071a16cc;
+  height: 10px;
+  border: 1px solid #cedac42a;
+}
+#health-fill {
+  height: 100%;
+  background: #bfce9e;
+  transition: width 0.12s;
+}
+.meter-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #bbcab0;
+  margin: 7px 0 10px;
+}
+.xp-track {
+  height: 3px;
+  background: #c5d4b52b;
+}
+#xp-fill {
+  height: 100%;
+  background: var(--gold);
+}
+.ability-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  align-items: center;
+  margin-top: 18px;
+}
+.ability-row b {
+  font-weight: 400;
+  margin-left: 5px;
+}
+#ability-cooldown {
+  color: var(--gold);
+}
+.weapon-panel {
+  position: absolute;
+  bottom: 75px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+#weapon-rarity {
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+.weapon-panel h2 {
+  font-size: 15px;
+  font-weight: 500;
+  margin: 7px 0;
+}
+.ammo strong {
+  font-size: 40px;
+  font-weight: 400;
+}
+.ammo span {
+  font-size: 16px;
+  color: #9ba991;
+  margin-left: 8px;
+}
+.weapon-panel button {
+  margin-top: 8px;
+}
+.map-panel {
+  position: absolute;
+  bottom: 75px;
+  right: 30px;
+  width: 200px;
+  background: #0d211cec;
+  border: 1px solid #bacaaf45;
+}
+.map-panel canvas {
+  width: 100%;
+  display: block;
+}
+.map-panel > div {
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 8px 10px;
+  border-top: 1px solid #c5d4b530;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.map-panel.expanded {
+  width: min(65vh, 65vw);
+  bottom: 50%;
+  right: 50%;
+  transform: translate(50%, 50%);
+}
+.controls {
+  position: absolute;
+  bottom: 24px;
+  left: 30px;
+  right: 30px;
+  display: flex;
+  justify-content: center;
+  gap: 23px;
+  font-size: 8px;
+  letter-spacing: 0.6px;
+  color: #a0b099;
+}
+.controls kbd {
+  margin-right: 4px;
+  font-size: 8px;
+}
+@media (max-width: 800px) {
+  #hud {
+    padding: 15px;
+  }
+  .quests {
+    max-width: 230px;
+    margin-top: 20px;
+    padding: 12px;
+  }
+  .quests h2 {
+    font-size: 17px;
+  }
+  .player-panel {
+    left: 15px;
+    width: 200px;
+  }
+  .map-panel {
+    right: 15px;
+    width: 130px;
+  }
+  .controls {
+    gap: 8px;
+    left: 10px;
+    right: 10px;
+    font-size: 7px;
+  }
+  .controls span:last-child {
+    display: none;
+  }
+  .weapon-panel {
+    bottom: 82px;
+  }
+  .weapon-panel h2 {
+    font-size: 12px;
+  }
+  .brand-small {
+    font-size: 17px;
+  }
+  #session {
+    font-size: 8px;
+    padding: 8px;
+  }
+  .quests .quest-line {
+    font-size: 10px;
+  }
+}

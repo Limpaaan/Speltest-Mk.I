@@ -1,0 +1,15 @@
+Map database © OpenStreetMap contributors.
+Available under the Open Database License (ODbL) 1.0:
+https://opendatacommons.org/licenses/odbl/1-0/
+https://www.openstreetmap.org/copyright
+
+Download the source extract: /map-source.json
+Download the complete adapted map database used by this build: /map-database.json
+
+Retrieved 2026-10-06 via Overpass API. Adaptations: selected features,
+local coordinate projection, distance compression to 1:4, simplified river
+widths and symbolic landmark buildings. Plushuset and Åsbo use explicitly
+approximate gameplay positions; the other six landmark positions carry
+OpenStreetMap source IDs. This is not a surveyed map of Avesta.
+
+Database rights are separate from rights in the game's code and artwork.

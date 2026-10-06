@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.local/
+test-results/
+playwright-report/
+package-lock.json
+data/avesta-osm.json
+shared/geography.json

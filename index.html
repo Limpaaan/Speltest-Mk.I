@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#111d1c" />
+    <meta
+      name="description"
+      content="Försvara ett postapokalyptiskt Avesta. En 3D RPG-lootershooterprototyp för offline och multiplayer."
+    />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>Avesta — Sista skiftet</title>
+  </head>
+  <body>
+    <canvas id="scene" aria-label="Spelvärld i 3D"></canvas>
+    <div class="vignette"></div>
+    <main id="menu">
+      <header class="masthead">
+        <a class="wordmark" href="/">A<span> / </span>SS</a
+        ><span class="edition">SPELBAR PROTOTYP <b>0.1</b></span
+        ><span class="coordinate">DALARNA, SVERIGE</span>
+      </header>
+      <section class="intro">
+        <div class="eyebrow"><span class="live-dot"></span> AVESTA STÅR KVAR</div>
+        <h1>SISTA<br /><em>SKIFTET.</em></h1>
+        <p class="lede">Bruket har tystnat.<br />Det har inte vi.</p>
+        <p class="story">
+          Ur askan reser sig ett sista skift. Ta tillbaka Koppardalen, håll broarna över Dalälven
+          och försvara det vi kallar hemma.
+        </p>
+        <div class="tags">
+          <span>3D RPG</span><span>LOOT & KLASSER</span><span>1–8 SPELARE</span>
+        </div>
+      </section>
+      <section class="deployment" aria-label="Välj klass och spelläge">
+        <div class="section-label"><span>01 / VÄLJ DITT ARV</span><span>FYRA KLASSER</span></div>
+        <div id="classes" class="classes"></div>
+        <p id="class-detail" class="class-detail"></p>
+        <div class="identity">
+          <label
+            >DITT NAMN<input
+              id="player-name"
+              maxlength="24"
+              placeholder="Dalmas"
+              autocomplete="off"
+              value="Dalmas" /></label
+          ><label
+            >RUMSKOD <span>(MULTIPLAYER)</span
+            ><input
+              id="room-code"
+              maxlength="16"
+              value="AVESTA"
+              pattern="[A-Za-z0-9-]+"
+              autocomplete="off"
+          /></label>
+        </div>
+        <button id="play-offline" class="primary">GÅ PÅ SKIFT <span>OFFLINE SOLO ↗</span></button
+        ><button id="play-online" class="secondary">
+          ANSLUT TILL SAMMA RUM <span>MULTIPLAYER →</span>
+        </button>
+        <p id="menu-status" role="status">
+          Offline sparas på den här enheten. Multiplayer är en separat session.
+        </p>
+      </section>
+      <footer class="menu-footer">
+        <span>BYGGT AV SLAGG. HÄRDAT AV ÄLVEN.</span><span>WASD · MUS · TANGENTBORD KRÄVS</span>
+      </footer>
+      <div class="map-caption">
+        <span class="cross">+</span>
+        <div>SEKTOR 01 / KOPPARDALEN<small>OSM-GRUNDDATA · STILISERAD MILJÖ</small></div>
+      </div>
+    </main>
+    <section id="hud" hidden aria-label="Spelinformation">
+      <header class="hud-top">
+        <div class="brand-small">AVESTA<span>SISTA SKIFTET</span></div>
+        <div id="session"></div>
+        <button id="pause-button" class="small-button">MENY <kbd>ESC</kbd></button>
+      </header>
+      <aside class="quests">
+        <div class="eyebrow">DITT SKIFT</div>
+        <h2>Vi lämnar ingen bro.</h2>
+        <div id="quest-list"></div>
+        <p id="zone"></p>
+      </aside>
+      <div id="notification" role="status"></div>
+      <div id="interact"></div>
+      <div id="crosshair">+</div>
+      <div class="player-panel">
+        <div class="player-heading"><span id="player-class"></span><span id="level"></span></div>
+        <div class="health-track"><div id="health-fill"></div></div>
+        <div class="meter-label"><span id="health-text"></span><span id="xp-text"></span></div>
+        <div class="xp-track"><div id="xp-fill"></div></div>
+        <div class="ability-row">
+          <span><kbd>Q</kbd> <b id="ability-name"></b></span><span id="ability-cooldown"></span>
+        </div>
+      </div>
+      <div class="weapon-panel">
+        <span id="weapon-rarity"></span>
+        <h2 id="weapon-name"></h2>
+        <div class="ammo"><strong id="ammo"></strong><span id="ammo-max"></span></div>
+        <button id="inventory-button" class="small-button">PACKNING <kbd>I</kbd></button>
+      </div>
+      <div class="map-panel">
+        <canvas id="minimap" width="260" height="260" aria-label="Översiktskarta"></canvas>
+        <div>AVESTA / OSM · ~ UNGEFÄRLIG <kbd>M</kbd></div>
+      </div>
+      <div class="controls">
+        <span><kbd>WASD</kbd> FÖRFLYTTA</span><span><kbd>MUS</kbd> SIKTA & SKJUT</span
+        ><span><kbd>R</kbd> LADDA</span><span><kbd>E</kbd> BÄRGA</span
+        ><span><kbd>H</kbd> LÄK / 15 SKROT</span>
+      </div>
+    </section>
+    <dialog id="inventory-dialog">
+      <div class="dialog-heading">
+        <div>
+          <div class="eyebrow">BRUKETS ARV</div>
+          <h2>Din packning</h2>
+        </div>
+        <button class="close-dialog small-button">STÄNG ×</button>
+      </div>
+      <p id="inventory-stats"></p>
+      <div class="talents">
+        <button id="talent-power" class="secondary">+ Eldkraft</button
+        ><button id="talent-vitality" class="secondary">+ Livskraft</button>
+      </div>
+      <div id="inventory-items"></div>
+      <p class="muted">
+        Skrota oanvända vapen. Tryck H i spelet för att använda 15 skrot och återfå 50 hälsa.
+      </p>
+    </dialog>
+    <dialog id="pause-dialog">
+      <div class="eyebrow">EN STUND VID ÄLVEN</div>
+      <h2>Skiftet väntar.</h2>
+      <p id="pause-info"></p>
+      <button id="resume" class="primary">TILLBAKA TILL AVESTA →</button
+      ><button id="pvp-toggle" class="secondary">AKTIVERA PVP I SKOGSBO</button
+      ><button id="leave" class="secondary">SPARA & LÄMNA SKIFTET</button>
+      <p class="muted">
+        PvP kräver att båda spelarna har aktiverat det och befinner sig i Skogsbos markerade arena.
+      </p>
+    </dialog>
+    <dialog id="death-dialog">
+      <div class="eyebrow">DET ÄR INTE ÖVER</div>
+      <h2>Res dig, dalmas.</h2>
+      <p>Du behåller din packning och dina framsteg.</p>
+      <button id="respawn" class="primary">ÅTERVÄND TILL SAMLINGSPLATSEN →</button>
+    </dialog>
+    <a
+      id="map-attribution"
+      href="https://www.openstreetmap.org/copyright"
+      target="_blank"
+      rel="noopener noreferrer"
+      >© OpenStreetMap contributors · ODbL</a
+    >
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

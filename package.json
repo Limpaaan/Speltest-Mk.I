@@ -1,0 +1,30 @@
+{
+  "name": "avesta-sista-skiftet",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Avesta: Sista skiftet – en spelbar 3D RPG-lootershooterprototyp med offline och serverstyrd multiplayer.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "server": "node server/index.js",
+    "build": "vite build && node scripts/build-sw.js",
+    "start": "node server/index.js --production",
+    "test": "node --test test/*.test.js",
+    "test:browser": "playwright test",
+    "map:import": "node scripts/import-osm.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "three": "0.186.1",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "prettier": "3.9.9",
+    "vite": "8.3.3"
+  }
+}
