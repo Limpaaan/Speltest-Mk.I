@@ -16,17 +16,19 @@ const paths = (await files('dist')).sort(),
   hash = createHash('sha256');
 for (const p of paths) hash.update(await readFile(p));
 const cache = `avesta-${hash.digest('hex').slice(0, 12)}`,
-  urls = ['/', ...paths.map((p) => p.slice(4))];
+  urls = ['./', ...paths.map((p) => './' + p.slice(5))];
 await writeFile(
   'dist/sw.js',
   `
-const CACHE=${JSON.stringify(cache)};
-const URLS=${JSON.stringify(urls)};
+const BASE=self.registration.scope;
+const PREFIX='avesta:'+BASE+':';
+const CACHE=PREFIX+${JSON.stringify(cache)};
+const URLS=${JSON.stringify(urls)}.map(path=>new URL(path,BASE).href);
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(URLS))));
-self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('avesta-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
+self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith(PREFIX)&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
  const url=new URL(event.request.url);
- if(event.request.method!=='GET'||url.origin!==self.location.origin||url.pathname==='/health'||url.pathname==='/ws')return;
+ if(event.request.method!=='GET'||url.origin!==self.location.origin||url.pathname===new URL('health',BASE).pathname||url.pathname===new URL('ws',BASE).pathname)return;
  event.respondWith(caches.match(event.request,{cacheName:CACHE}).then(cached=>cached||fetch(event.request)));
 });
 `,

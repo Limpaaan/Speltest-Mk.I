@@ -2,9 +2,17 @@
   "name": "Avesta: Sista skiftet",
   "short_name": "Avesta",
   "lang": "sv",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#14241f",
   "theme_color": "#14241f",
-  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "scope": "./"
 }

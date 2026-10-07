@@ -114,3 +114,8 @@ Välj en spelare och skapa vapen, ändra nivå/XP/hälsa/skrot/talanger eller å
 Offlineändringar sparas lokalt; multiplayerändringar görs av servern och gäller
 sessionen. Alla som väljer AdminL får åtkomst; namnregeln är ett testverktyg, inte
 autentisering. Vanliga spelare kan inte förfalska en annan sockets behörighet.
+
+## Publicera webbklienten
+
+Spelare behöver ingen installation. GitHub Pages-flödet är förberett; se
+[webbpublicering](docs/DEPLOYMENT.md). Ingen aktiv publik speladress är ännu verifierad.

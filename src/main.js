@@ -18,6 +18,9 @@ import {
   savePlayer,
   restorePlayer,
 } from '../shared/game.js';
+const configuredServer = import.meta.env.VITE_GAME_SERVER_URL || '';
+const multiplayerAvailable =
+  import.meta.env.VITE_STATIC_HOST !== 'true' || Boolean(configuredServer);
 const $ = (id) => document.getElementById(id);
 let selected = 'stalvakt',
   mode = null,
@@ -139,7 +142,7 @@ function leave(message) {
   resetInput();
   world = createWorld();
   state = snapshot(world);
-  $('play-online').disabled = false;
+  $('play-online').disabled = !multiplayerAvailable;
   status(message || 'Skiftet är avslutat. Offlineframsteg sparas per klass på den här enheten.');
 }
 $('play-offline').onclick = () => {
@@ -148,7 +151,7 @@ $('play-offline').onclick = () => {
   const pending = socket;
   socket = null;
   pending?.close();
-  $('play-online').disabled = false;
+  $('play-online').disabled = !multiplayerAvailable;
   mode = 'offline';
   world = createWorld();
   myId = 'local';
@@ -158,6 +161,7 @@ $('play-offline').onclick = () => {
   enter();
 };
 $('play-online').onclick = () => {
+  if (!multiplayerAvailable) return;
   const name = chosenName();
   if (!name) return;
   const room = $('room-code').value.trim().toUpperCase();
@@ -166,14 +170,14 @@ $('play-online').onclick = () => {
   $('play-online').disabled = true;
   status('Ansluter till skiftets server …');
   const ws = new WebSocket(
-    `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`,
+    configuredServer || `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`,
   );
   socket = ws;
   const timeout = setTimeout(() => {
     if (socket === ws && mode !== 'online') {
       socket = null;
       ws.close();
-      $('play-online').disabled = false;
+      $('play-online').disabled = !multiplayerAvailable;
       status('Servern svarade inte. Starta spelservern eller välj offline.');
     }
   }, 8000);
@@ -518,7 +522,7 @@ function frame(now) {
 requestAnimationFrame(frame);
 if (import.meta.env.PROD && 'serviceWorker' in navigator)
   navigator.serviceWorker
-    .register('/sw.js')
+    .register(new URL('sw.js', new URL(import.meta.env.BASE_URL, document.baseURI)))
     .then(() => navigator.serviceWorker.ready)
     .then(() => {
       if (!mode)
@@ -589,3 +593,8 @@ $('admin-stats-form').onsubmit = (e) => {
   sendAdmin({ type: 'set_stats', targetId: $('admin-target').value, stats });
 };
 $('admin-heal').onclick = () => sendAdmin({ type: 'heal', targetId: $('admin-target').value });
+
+if (!multiplayerAvailable) {
+  $('play-online').disabled = true;
+  $('play-online').textContent = 'MULTIPLAYER KRÄVER EN SPELSERVER';
+}
