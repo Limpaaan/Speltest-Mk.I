@@ -4,6 +4,10 @@ Vägsträckningar, registrerade vägbroar, vattenytor och älvlinjer kommer frå
 
 Kartans geografiska avstånd är komprimerade **1:4**. Riktningar och relativa lägen för källbelagda punkter behålls i en lokal projektion, men terränghöjder saknas. Vägbredder, vissa vattenbredder, byggnadsstorlekar och 3D-utseenden är spelmässiga approximationer. Detta är inte en lantmäterimätning eller en fullständig digital tvilling av Avesta. Visade vapenavstånd gäller spelenheter.
 
+Se [höjdimportens status](TERRAIN.md) och [granskade bildreferenser](VISUAL-REFERENCES.md).
+Version 0.2 har texturerade fasader och en ombyggd Dalahäst; Street View-granskning
+och integration av verkliga höjder återstår.
+
 ## Landmärken
 
 | Spelplats   | Källa och koordinater                        | Status                                                                    |
