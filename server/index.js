@@ -79,15 +79,35 @@ export function createGameServer({
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws));
   });
   function send(ws, data) {
-    if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 1_000_000)
-      ws.send(JSON.stringify(data));
+    if (ws.readyState !== WebSocket.OPEN || ws.bufferedAmount >= 1_000_000) return false;
+    ws.send(JSON.stringify(data));
+    return true;
   }
   wss.on('connection', (ws) => {
     let room,
       playerId,
+      stateAck = false,
+      pendingSeq = null,
+      nextSeq = 1,
       windowStart = Date.now(),
       count = 0,
       lastInput = Date.now();
+    ws.sendSnapshot = (extra = {}) => {
+      if (!room || (stateAck && pendingSeq !== null)) return;
+      const seq = nextSeq;
+      if (
+        send(ws, {
+          type: 'state',
+          state: snapshot(room.world),
+          ...(stateAck ? { seq } : {}),
+          ...extra,
+        }) &&
+        stateAck
+      ) {
+        pendingSeq = seq;
+        nextSeq++;
+      }
+    };
     const joinDeadline = setTimeout(() => {
       if (!room) ws.close(1008, 'Join timeout');
     }, 10000);
@@ -135,7 +155,10 @@ export function createGameServer({
         room.clients.set(ws, playerId);
         addPlayer(room.world, playerId, username.name, msg.classId);
         clearTimeout(joinDeadline);
-        send(ws, { type: 'welcome', id: playerId, room: code, state: snapshot(room.world) });
+        stateAck = msg.stateAck === true;
+        ws.sendSnapshot({ type: 'welcome', id: playerId, room: code });
+      } else if (room && msg.type === 'state_ack') {
+        if (stateAck && Number.isSafeInteger(msg.seq) && msg.seq === pendingSeq) pendingSeq = null;
       } else if (room && msg.type === 'input') {
         room.world.players[playerId].input = cleanInput(msg.input);
         lastInput = now;
@@ -161,9 +184,7 @@ export function createGameServer({
     ticks++;
     for (const room of rooms.values()) {
       tick(room.world, 0.05);
-      if (ticks % 2 === 0)
-        for (const ws of room.clients.keys())
-          send(ws, { type: 'state', state: snapshot(room.world) });
+      if (ticks % 2 === 0) for (const ws of room.clients.keys()) ws.sendSnapshot();
     }
   }, 50);
   timer.unref();

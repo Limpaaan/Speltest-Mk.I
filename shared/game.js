@@ -1,10 +1,21 @@
-import { MAP, canStand, clearShot, inArena, inSanctuary, walkableNear } from './map.js';
+import {
+  MAP,
+  canStand,
+  clearShot,
+  inArena,
+  inSanctuary,
+  walkableNear,
+  eyeHeight,
+  bodyHeight,
+  rayBoxDistance,
+  raycastWorld,
+} from './map.js';
 export const CLASSES = {
   stalvakt: {
     name: 'Stålvakt',
     subtitle: 'Verkets sista försvarslinje',
     hp: 160,
-    speed: 31,
+    speed: 7,
     color: '#df784a',
     ability: 'Härdning',
     description: 'Stålarbetarens tålighet. Halverad skada i 6 sekunder.',
@@ -13,7 +24,7 @@ export const CLASSES = {
     name: 'Skogsvandrare',
     subtitle: 'Skogsbo håller stånd',
     hp: 105,
-    speed: 40,
+    speed: 8,
     color: '#98bd8e',
     ability: 'Skogens puls',
     description: 'Återfå 45 hälsa och spring snabbare i 6 sekunder.',
@@ -22,7 +33,7 @@ export const CLASSES = {
     name: 'Kopparslagare',
     subtitle: 'Koppardalens glöd',
     hp: 125,
-    speed: 34,
+    speed: 7.3,
     color: '#e6b85c',
     ability: 'Slaggpuls',
     description: 'En stötvåg skadar fiender inom 32 meter.',
@@ -31,7 +42,7 @@ export const CLASSES = {
     name: 'Älvvakt',
     subtitle: 'Ingen tar våra broar',
     hp: 115,
-    speed: 36,
+    speed: 7.6,
     color: '#72bbd4',
     ability: 'Älvstorm',
     description: 'Dubblerad eldhastighet i 6 sekunder.',
@@ -54,7 +65,16 @@ export function cleanInput(i = {}) {
     x /= length;
     z /= length;
   }
-  return { x, z, aim: finite(i.aim), fire: i.fire === true };
+  return {
+    x,
+    z,
+    aim: finite(i.aim) % (Math.PI * 2),
+    pitch: Math.max(-1.45, Math.min(1.45, finite(i.pitch))),
+    fire: i.fire === true,
+    ads: i.ads === true,
+    crouch: i.crouch === true,
+    sprint: i.sprint === true,
+  };
 }
 export function makeWeapon(id, kind = 'rifle', rarity = 0, level = 1) {
   return {
@@ -134,6 +154,11 @@ export function addPlayer(w, id, name, classId) {
     classId,
     ...MAP.spawn,
     aim: 0,
+    pitch: 0,
+    stamina: 100,
+    crouch: false,
+    ads: false,
+    sprinting: false,
     hp: CLASSES[classId].hp,
     level: 1,
     xp: 0,
@@ -230,10 +255,13 @@ function damageEnemy(w, e, damage, p) {
   if (e.hp <= 0) killEnemy(w, e, p);
 }
 function move(entity, x, z, amount) {
-  const nx = entity.x + x * amount,
-    nz = entity.z + z * amount;
-  if (canStand(nx, entity.z)) entity.x = nx;
-  if (canStand(entity.x, nz)) entity.z = nz;
+  const steps = Math.max(1, Math.ceil(Math.abs(amount) / 0.3));
+  for (let i = 0; i < steps; i++) {
+    const nx = entity.x + (x * amount) / steps,
+      nz = entity.z + (z * amount) / steps;
+    if (canStand(nx, entity.z)) entity.x = nx;
+    if (canStand(entity.x, nz)) entity.z = nz;
+  }
 }
 function shoot(w, p) {
   if (inSanctuary(p)) return;
@@ -245,43 +273,53 @@ function shoot(w, p) {
   }
   p.ammo--;
   p.cooldown = stats.delay / (p.classId === 'alvvakt' && p.buff > 0 ? 2 : 1);
-  const dx = Math.sin(p.aim),
-    dz = Math.cos(p.aim);
-  let hit = null,
-    distance = stats.range;
+  const origin = { x: p.x, y: eyeHeight(p), z: p.z };
+  const direction = {
+    x: Math.sin(p.aim) * Math.cos(p.pitch),
+    y: Math.sin(p.pitch),
+    z: Math.cos(p.aim) * Math.cos(p.pitch),
+  };
+  const wall = raycastWorld(origin, direction, stats.range);
+  let distance = wall?.distance ?? stats.range,
+    hit = null,
+    headshot = false;
   const targets = [
     ...w.enemies.filter((e) => e.hp > 0),
     ...Object.values(w.players).filter(
       (t) => t.id !== p.id && w.pvp && p.pvp && t.pvp && inArena(p) && inArena(t) && t.hp > 0,
     ),
   ];
-  for (const t of targets) {
-    const tx = t.x - p.x,
-      tz = t.z - p.z,
-      along = tx * dx + tz * dz,
-      across = Math.abs(tx * dz - tz * dx);
-    if (
-      along > 0 &&
-      along < distance &&
-      across < (t.type === 'boss' ? 5 : 2.8) &&
-      clearShot(p, t)
-    ) {
-      hit = t;
+  for (const target of targets) {
+    const radius = target.type === 'boss' ? 0.65 : 0.34;
+    const along = rayBoxDistance(
+      origin,
+      direction,
+      { x: target.x - radius, y: 0, z: target.z - radius },
+      { x: target.x + radius, y: bodyHeight(target), z: target.z + radius },
+      distance,
+    );
+    if (along !== null && along < distance) {
       distance = along;
+      hit = target;
+      headshot = origin.y + direction.y * along > bodyHeight(target) * 0.8;
     }
   }
-  const end = { x: p.x + dx * distance, z: p.z + dz * distance };
   w.shots.push({
     id: `s${w.nextId++}`,
+    owner: p.id,
     x: p.x,
+    y: origin.y,
     z: p.z,
-    endX: end.x,
-    endZ: end.z,
+    endX: p.x + direction.x * distance,
+    endY: origin.y + direction.y * distance,
+    endZ: p.z + direction.z * distance,
     time: w.time,
     hit: Boolean(hit),
+    headshot,
   });
-  if (hit?.classId) hurt(w, hit, stats.damage);
-  else if (hit) damageEnemy(w, hit, stats.damage, p);
+  const damage = stats.damage * (headshot ? 1.5 : 1);
+  if (hit?.classId) hurt(w, hit, damage);
+  else if (hit) damageEnemy(w, hit, damage, p);
 }
 export function act(w, id, action) {
   const p = w.players[id];
@@ -371,11 +409,26 @@ export function tick(w, dt) {
     if (p.hp <= 0) continue;
     const input = cleanInput(p.input);
     p.aim = input.aim;
+    p.pitch = input.pitch;
+    p.crouch = input.crouch;
+    p.ads = input.ads;
+    p.sprinting =
+      input.sprint &&
+      !p.crouch &&
+      !p.ads &&
+      !input.fire &&
+      Math.hypot(input.x, input.z) > 0 &&
+      p.stamina > 1;
+    p.stamina = Math.max(0, Math.min(100, p.stamina + (p.sprinting ? -24 : 18) * dt));
     move(
       p,
       input.x,
       input.z,
-      CLASSES[p.classId].speed * (p.classId === 'skogsvandrare' && p.buff > 0 ? 1.6 : 1) * dt,
+      CLASSES[p.classId].speed *
+        (p.crouch ? 0.55 : p.sprinting ? 1.55 : 1) *
+        (p.ads ? 0.7 : 1) *
+        (p.classId === 'skogsvandrare' && p.buff > 0 ? 1.6 : 1) *
+        dt,
     );
     if (input.fire) shoot(w, p);
   }
@@ -403,7 +456,7 @@ export function tick(w, dt) {
     }
     if (dist < (boss ? 100 : 75)) {
       e.phase = 'hunt';
-      if (dist > (boss ? 17 : 14)) move(e, dx / dist, dz / dist, (boss ? 12 : 17) * dt);
+      if (dist > (boss ? 17 : 14)) move(e, dx / dist, dz / dist, (boss ? 3 : 4.2) * dt);
       if (dist < (boss ? 25 : 40) && e.cooldown <= 0 && clearShot(e, p)) {
         if (boss) {
           e.windup = 1.4;
@@ -414,8 +467,10 @@ export function tick(w, dt) {
           w.shots.push({
             id: `s${w.nextId++}`,
             x: e.x,
+            y: eyeHeight(e),
             z: e.z,
             endX: p.x,
+            endY: eyeHeight(p),
             endZ: p.z,
             time: w.time,
             enemy: true,

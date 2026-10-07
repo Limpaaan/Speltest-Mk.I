@@ -113,7 +113,9 @@
   width: 270px;
 }
 .player-heading {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 12px;
   justify-content: space-between;
   font-size: 11px;
   letter-spacing: 1px;

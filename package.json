@@ -1,9 +1,9 @@
 {
   "name": "avesta-sista-skiftet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Avesta: Sista skiftet – en spelbar 3D RPG-lootershooterprototyp med offline och serverstyrd multiplayer.",
+  "description": "Avesta: Sista skiftet \u2013 en spelbar 3D RPG-lootershooterprototyp med offline och serverstyrd multiplayer.",
   "engines": {
     "node": ">=22.12.0"
   },

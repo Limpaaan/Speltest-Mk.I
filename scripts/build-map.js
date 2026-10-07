@@ -44,7 +44,7 @@ const definitions = [
   ['plus', 'Plushuset', null, 32, 25, 13, 'mall', { lat: 60.1456, lon: 16.1672 }],
   ['verket', 'Verket', 'node/9868272526', 38, 24, 26, 'works'],
   ['koppar', 'Koppardalen', 'way/132515278', 0, 0, 3, 'area'],
-  ['horse', 'Dalahästen', 'node/3222383605', 20, 9, 27, 'horse'],
+  ['horse', 'Dalahästen', 'node/3222383605', 12, 4, 14, 'horse'],
   ['prast', 'Prästjorden', 'node/4577465252', 20, 18, 12, 'district'],
   ['asbo', 'Åsbo', null, 20, 20, 12, 'district', { lat: 60.1535, lon: 16.193 }],
   ['skogsbo', 'Skogsbo', 'node/1896051103', 25, 20, 15, 'district'],

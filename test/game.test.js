@@ -31,7 +31,7 @@ test('movement is finite, normalized and limited by server time', () => {
   const origin = { x: p.x, z: p.z };
   p.input = { x: 100, z: 100, aim: NaN };
   advance(w, 1);
-  assert.ok(Math.hypot(p.x - origin.x, p.z - origin.z) <= 31.00001);
+  assert.ok(Math.hypot(p.x - origin.x, p.z - origin.z) <= 7.00001);
   assert.equal(cleanInput({ x: Infinity, z: 'evil', aim: NaN }).x, 0);
   assert.equal(cleanInput({ x: Infinity, z: 'evil', aim: NaN }).z, 0);
   assert.equal(cleanInput({ fire: 1 }).fire, false);
@@ -56,7 +56,7 @@ test('buildings and real river geometry block walking while a mapped bridge is t
   p.z = a[1];
   const distance = Math.hypot(b[0] - a[0], b[1] - a[1]);
   p.input = cleanInput({ x: (b[0] - a[0]) / distance, z: (b[1] - a[1]) / distance });
-  advance(w, distance / 31);
+  advance(w, distance / 7);
   assert.ok(Math.hypot(p.x - b[0], p.z - b[1]) < 3);
 });
 
@@ -266,7 +266,16 @@ test('rally point prevents incoming damage and firing until player leaves', () =
 
 test('untrusted input shapes and inherited class or weapon names are harmless', () => {
   for (const input of [null, 1, 'x', [], { x: null, z: {} }])
-    assert.deepEqual(cleanInput(input), { x: 0, z: 0, aim: 0, fire: false });
+    assert.deepEqual(cleanInput(input), {
+      x: 0,
+      z: 0,
+      aim: 0,
+      pitch: 0,
+      fire: false,
+      ads: false,
+      crouch: false,
+      sprint: false,
+    });
   const w = createWorld();
   const p = addPlayer(w, 'malformed', { toString: null }, '__proto__');
   assert.equal(p.classId, 'stalvakt');
@@ -278,4 +287,46 @@ test('untrusted input shapes and inherited class or weapon names are harmless', 
     inventory: [{ kind: '__proto__', rarity: 0 }],
   });
   assert.equal(p.weapon.kind, 'rifle');
+});
+
+test('FPS pitch misses above and below the body, while headshots deal extra damage', () => {
+  const { w, p } = setup();
+  p.x = 70;
+  p.z = 180;
+  w.enemies = [];
+  const e = spawnEnemy(w, 70, 200);
+  e.cooldown = 999;
+  p.input = { fire: true, aim: 0, pitch: 1.4 };
+  tick(w, 0.05);
+  assert.equal(e.hp, 70);
+  p.cooldown = 0;
+  p.input.pitch = -1;
+  tick(w, 0.05);
+  assert.equal(e.hp, 70);
+  assert.ok(w.shots.at(-1).endY < 0.001);
+  p.cooldown = 0;
+  p.input.pitch = 0;
+  tick(w, 0.05);
+  assert.equal(e.hp, 70 - 19 * 1.5);
+  assert.equal(w.shots.at(-1).headshot, true);
+});
+test('sprint consumes stamina and crouch/ADS prevent sprinting', () => {
+  const { w, p } = setup();
+  p.x = 70;
+  p.z = 180;
+  w.enemies = [];
+  p.input = { z: 1, sprint: true };
+  advance(w, 1);
+  assert.ok(p.stamina < 100);
+  assert.ok(p.z > 190);
+  p.input = { z: 1, sprint: true, crouch: true };
+  const z = p.z;
+  advance(w, 1);
+  assert.equal(p.sprinting, false);
+  assert.ok(p.z - z < 4);
+  p.input = { z: 1, sprint: true, ads: true };
+  advance(w, 0.1);
+  assert.equal(p.sprinting, false);
+  assert.equal(cleanInput({ pitch: 999 }).pitch, 1.45);
+  assert.equal(cleanInput({ crouch: 1 }).crouch, false);
 });

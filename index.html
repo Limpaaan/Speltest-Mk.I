@@ -13,12 +13,12 @@
     <title>Avesta — Sista skiftet</title>
   </head>
   <body>
-    <canvas id="scene" aria-label="Spelvärld i 3D"></canvas>
+    <canvas tabindex="0" id="scene" aria-label="Spelvärld i 3D"></canvas>
     <div class="vignette"></div>
     <main id="menu">
       <header class="masthead">
         <a class="wordmark" href="/">A<span> / </span>SS</a
-        ><span class="edition">SPELBAR PROTOTYP <b>0.1</b></span
+        ><span class="edition">SPELBAR PROTOTYP <b>0.2</b></span
         ><span class="coordinate">DALARNA, SVERIGE</span>
       </header>
       <section class="intro">
@@ -71,10 +71,12 @@
         <div>SEKTOR 01 / KOPPARDALEN<small>OSM-GRUNDDATA · STILISERAD MILJÖ</small></div>
       </div>
     </main>
+    <button id="capture-mouse" hidden>KLICKA FÖR ATT SPELA · ESC FRIGÖR MUSEN</button>
     <section id="hud" hidden aria-label="Spelinformation">
       <header class="hud-top">
         <div class="brand-small">AVESTA<span>SISTA SKIFTET</span></div>
         <div id="session"></div>
+        <div id="compass"></div>
         <button id="pause-button" class="small-button">MENY <kbd>ESC</kbd></button>
       </header>
       <aside class="quests">
@@ -87,7 +89,10 @@
       <div id="interact"></div>
       <div id="crosshair">+</div>
       <div class="player-panel">
-        <div class="player-heading"><span id="player-class"></span><span id="level"></span></div>
+        <div class="player-heading">
+          <span id="player-class"></span><span id="stance"></span><span id="stamina"></span
+          ><span id="level"></span>
+        </div>
         <div class="health-track"><div id="health-fill"></div></div>
         <div class="meter-label"><span id="health-text"></span><span id="xp-text"></span></div>
         <div class="xp-track"><div id="xp-fill"></div></div>

@@ -28,14 +28,14 @@ function message(ws, type) {
   });
 }
 let userSequence = 0;
-async function join(url, room = 'AVESTA', name = `Tester ${++userSequence}`) {
+async function join(url, room = 'AVESTA', name = `Tester ${++userSequence}`, options = {}) {
   const ws = new WebSocket(url);
   await new Promise((resolve, reject) => {
     ws.once('open', resolve);
     ws.once('error', reject);
   });
   const ready = message(ws, 'welcome');
-  ws.send(JSON.stringify({ type: 'join', room, name, classId: 'stalvakt' }));
+  ws.send(JSON.stringify({ type: 'join', room, name, classId: 'stalvakt', ...options }));
   const welcome = await ready;
   return { ws, ...welcome };
 }
@@ -147,4 +147,28 @@ test('AdminL modifies a selected player while ordinary sockets cannot forge admi
   duplicate.send(JSON.stringify({ type: 'join', room: 'ADMIN', name: 'ADMINL' }));
   assert.match((await rejected).message, /redan/);
   duplicate.close();
+});
+
+test('a slow browser receives only one unacknowledged snapshot then jumps to the latest state', async (t) => {
+  const { url } = await server(t);
+  const slow = await join(url, 'SLOW', 'Långsam', { stateAck: true }),
+    fast = await join(url, 'SLOW', 'Snabb');
+  const states = [];
+  slow.ws.on('message', (raw) => {
+    const m = JSON.parse(raw);
+    if (m.type === 'state') states.push(m);
+  });
+  await wait(350);
+  assert.equal(states.length, 0);
+  assert.ok((await message(fast.ws, 'state')).state.time > 0.3);
+  slow.ws.send(JSON.stringify({ type: 'state_ack', seq: slow.seq + 1 }));
+  await wait(150);
+  assert.equal(states.length, 0);
+  const next = message(slow.ws, 'state');
+  slow.ws.send(JSON.stringify({ type: 'state_ack', seq: slow.seq }));
+  const update = await next;
+  assert.ok(update.state.time > 0.45);
+  assert.equal(update.seq, slow.seq + 1);
+  await wait(250);
+  assert.equal(states.length, 1);
 });

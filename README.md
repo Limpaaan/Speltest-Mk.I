@@ -4,9 +4,9 @@
 
 En spelbar, svenskspråkig **3D RPG-lootershooterprototyp** i ett postapokalyptiskt Avesta. Stadens försvarare möter det fiktiva danska **Järnsundskompaniet**, en militär invasionsfraktion. Berättelsen handlar om hembygd, gemenskap och motstånd. Fraktionen representerar inte danskar som folk.
 
-Det här är en första vertikal prototyp, inte ett färdigt storskaligt RPG. Byggnaderna är egenbyggda, stiliserade volymer. **Vägar och älvförlopp bygger på OpenStreetMap. Sex landmärken har källbelagda positioner; Plushuset och Åsbo är fortfarande ungefärligt placerade.** Se [kartans status och datakällor](docs/MAP.md).
+Det här är en första vertikal prototyp, inte ett färdigt storskaligt RPG. Version 0.2 har förstapersonsvy, texturerade fasader, synligt vapen och en ombyggd Dalahäst. Grafiken är fortfarande en förenklad prototyp; terrängen är plan tills verkliga höjddata har återhämtats och integrerats. **Vägar och älvförlopp bygger på OpenStreetMap. Sex landmärken har källbelagda positioner; Plushuset och Åsbo är fortfarande ungefärligt placerade.** Se [kartans status och datakällor](docs/MAP.md).
 
-![Startskärmen i Avesta: Sista skiftet](docs/images/menu.png)
+![FPS-vyn i Avesta: Sista skiftet](docs/images/fps.png)
 
 ## Spela och utveckla
 
@@ -45,7 +45,7 @@ Vites utvecklingsserver använder port **5173** och skickar `/ws` vidare till sp
 | Älvvakt       | Dalälven och broarna          | Älvstorm: dubblerad eldhastighet                |
 
 - Skyddad samlingsplats: inga inkommande skador eller skott från skyddszonen. Lämna den ljusa markringen för att inleda strid.
-- Isometrisk 3D-strid med rörelse, siktning, vapenmagasin, omladdning, byggnadskollisioner och blockerade skott genom byggnader.
+- FPS-strid med muslås, höjdledssiktning, huvudträffar, sikte, sprint med uthållighet, hukning, vapenmagasin och omladdning. Byggnader och låga hinder blockerar skott efter sin höjd.
 - Tre vapentyper: Bruksbössan, Slaggkastaren och Dalälvens öga. Fyra sällsynthetsgrader från vanlig till legendarisk; vapen skalar med nivå.
 - Personligt loot, 16 packningsplatser, utrustning, skrotning, läkning med skrot, nivåer upp till 30 och två talangspår.
 - Tre grunduppdrag: besegra fem soldater, bärga tre fynd och besegra en boss.
@@ -58,6 +58,9 @@ Vites utvecklingsserver använder port **5173** och skickar `/ws` vidare till sp
 | ---------------------- | --------------------------------- |
 | WASD / piltangenter    | Rörelse                           |
 | Mus / vänster musknapp | Sikta / skjut                     |
+| Höger musknapp         | Sikta genom vapnets sikte         |
+| Shift / C              | Sprint / växla hukning            |
+| F2                     | Fuskmeny för AdminL               |
 | Q                      | Klassförmåga                      |
 | R                      | Ladda om                          |
 | E                      | Bärga eget loot i närheten        |

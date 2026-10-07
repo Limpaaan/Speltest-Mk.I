@@ -14,14 +14,16 @@ flowchart LR
 
 ## Kontrakt
 
-- `join`: rumskod, visningsnamn, klass. Servern genererar spelar-ID och alla startvärden.
-- `input`: x/z i intervallet −1…1, siktningsvinkel och boolesk avfyrning. Rörelse normaliseras; NaN, Infinity och oväntade typer neutraliseras. Utebliven input i 500 ms stoppar rörelse/avfyrning.
+- `join`: rumskod, obligatoriskt unikt visningsnamn, klass och valfri `stateAck`. Servern genererar spelar-ID och alla startvärden.
+- `input`: x/z i intervallet −1…1, siktningsvinkel, vertikal siktning samt avfyrning, sprint, hukning och sikte. Rörelse normaliseras; NaN, Infinity och oväntade typer neutraliseras. Utebliven input i 500 ms stoppar rörelse/avfyrning.
 - `action`: omladdning, klassförmåga, loot, utrustning, skrotning, läkning, talang, PvP-val eller återkomst efter död. Servern kontrollerar ägarskap, avstånd, saldo, hälsa och nedkylning.
+- `admin`: exakta namnet AdminL ger socketens spelare rätt att skapa föremål och ändra validerade statistikfält för en spelare i samma rum. Namnet är avsiktligt ingen autentisering.
+- `ack`: webbklienten kvitterar sekvensnumret på varje tillstånd. Servern håller högst ett okvitterat tillstånd per klient och skickar det senaste efter kvittens; långsamma flikar bygger ingen gammal snapshotkö. Äldre klienter utan `stateAck` får ordinarie utskick.
 - `welcome` / `state`: serverns tillstånd. Renderingen interpolerar enheter visuellt. Klientprediction, rollback och laggkompensation är inte implementerade; hög latens märks i spelkänslan.
 - Max åtta spelare per rum, 32 rum, 256 anslutningar, 2 KiB per meddelande och 100 klientmeddelanden/s. Ej anslutna spelare stängs efter 10 sekunder. Rumsdata rensas när alla anslutningar stängts.
 - Kontroller av browser-origin är same-origin, eller det uttryckliga `ALLOWED_ORIGIN` bakom HTTPS-proxy. Detta ersätter inte autentisering. I lokalt läge tillåts verktyg utan Origin-header.
 
-Servern skickar rummets tillstånd till alla deltagare. Servern avgör träffar och progression, men klienter kan läsa fiendepositioner och andra spelares tillstånd. Det finns inget fullständigt anti-cheat eller dolt informationslager. Kollisions- och siktlinjetester använder samma förenklade byggnadsytor i båda spellägena. Träd, dekor och rök är visuella; terrängen är plan och byggnader kan inte beträdas. AI går direkt mot mål och kan fastna bakom byggnader; navmesh/pathfinding är nästa steg.
+Servern skickar rummets tillstånd till alla deltagare. Servern avgör träffar och progression, men klienter kan läsa fiendepositioner och andra spelares tillstånd. Det finns inget fullständigt anti-cheat eller dolt informationslager. Kollisions- och siktlinjetester använder samma förenklade byggnadsytor i båda spellägena. Skott använder tredimensionella strålar, spelarens ögonhöjd och byggnadernas/hindrens höjd. Träd och dekor är visuella; terrängen är plan och byggnader kan inte beträdas. AI går direkt mot mål och kan fastna bakom byggnader; navmesh/pathfinding är nästa steg.
 
 ## Sparning
 

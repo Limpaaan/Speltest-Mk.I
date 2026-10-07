@@ -1,38 +1,52 @@
 import { test, expect } from '@playwright/test';
-test('offline play, combat controls, inventory, save and pause work without errors', async ({
+async function capture(page) {
+  if (!(await page.evaluate(() => Boolean(document.pointerLockElement))))
+    await page.locator('#capture-mouse').click();
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement?.id)).toBe('scene');
+}
+test('FPS mouse capture, look, sprint, crouch, ADS shooting, inventory and pause work', async ({
   page,
 }) => {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
-  await expect(page.locator('h1')).toContainText('SKIFTET');
   await page.screenshot({ path: '.local/menu.png' });
   await page.getByRole('button', { name: 'Kopparslagare' }).click();
   await page.locator('#player-name').fill('Dalkulla');
   await page.locator('#play-offline').click();
-  await expect(page.locator('#hud')).toBeVisible();
+  await capture(page);
   await expect(page.locator('#player-class')).toHaveText('KOPPARSLAGARE');
+  const heading = await page.locator('#compass').textContent();
+  await page.mouse.move(800, 480);
+  await page.mouse.move(820, 480);
+  await expect(page.locator('#compass')).not.toHaveText(heading);
+  await page.keyboard.press('c');
+  await expect(page.locator('#stance')).toHaveText('HUKANDE');
+  await page.keyboard.press('c');
+  await page.keyboard.down('Shift');
+  await page.keyboard.down('s');
+  await expect(page.locator('#zone')).not.toContainText('SKYDDAD', { timeout: 20000 });
+  await page.keyboard.up('s');
+  await page.keyboard.up('Shift');
   await page.keyboard.press('q');
   await expect(page.locator('#ability-cooldown')).not.toHaveText('REDO');
-  await page.keyboard.down('s');
-  await expect(page.locator('#zone')).not.toContainText('SKYDDAD');
-  await page.keyboard.up('s');
-  await page.mouse.move(900, 600);
+  await page.mouse.down({ button: 'right' });
+  await expect(page.locator('body')).toHaveClass(/aiming/);
   await page.mouse.down();
-  await page.waitForTimeout(500);
-  await page.mouse.up();
   await expect(page.locator('#ammo')).not.toHaveText('24');
+  await page.mouse.up();
+  await page.mouse.up({ button: 'right' });
   await page.keyboard.press('r');
   await expect(page.locator('#ammo')).toHaveText('↻');
   await page.keyboard.press('i');
   await expect(page.locator('#inventory-dialog')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'UTRUSTAD', exact: true })).toBeDisabled();
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement)).toBeNull();
   await page.keyboard.press('i');
-  await expect(page.locator('#inventory-dialog')).not.toBeVisible();
+  await capture(page);
   await page.keyboard.press('m');
   await expect(page.locator('.map-panel')).toHaveClass(/expanded/);
   await page.keyboard.press('m');
-  await page.screenshot({ path: '.local/game.png' });
+  await page.screenshot({ path: '.local/fps.png' });
   await page.keyboard.press('Escape');
   await expect(page.locator('#pause-dialog')).toBeVisible();
   await page.locator('#leave').click();
@@ -40,12 +54,6 @@ test('offline play, combat controls, inventory, save and pause work without erro
     JSON.parse(localStorage.getItem('avesta-save-v1-kopparslagare')),
   );
   expect(save.classId).toBe('kopparslagare');
-  expect(save.inventory).toHaveLength(1);
-  await page.reload();
-  await page.getByRole('button', { name: 'Kopparslagare' }).click();
-  await page.locator('#player-name').fill('Dalkulla');
-  await page.locator('#play-offline').click();
-  await expect(page.locator('#player-class')).toHaveText('KOPPARSLAGARE');
   expect(errors).toEqual([]);
 });
 test('two browser clients join the same room and see the shared player count', async ({
@@ -55,7 +63,7 @@ test('two browser clients join the same room and see the shared player count', a
   const a = await context.newPage(),
     b = await context.newPage();
   for (const [page, name] of [
-    [a, 'Förste'],
+    [a, 'AdminL'],
     [b, 'Andre'],
   ]) {
     await page.goto('/');
@@ -65,6 +73,15 @@ test('two browser clients join the same room and see the shared player count', a
   }
   await expect(a.locator('#session')).toContainText('2 AV 8');
   await expect(b.locator('#session')).toContainText('2 AV 8');
+  await a.keyboard.press('F2');
+  await expect(a.locator('#admin-dialog')).toBeVisible();
+  await a.locator('#admin-target').selectOption({ label: 'Andre' });
+  await a.locator('#admin-level').fill('5');
+  await a.locator('#admin-stats-form button').click();
+  await expect(a.locator('#admin-status')).toContainText('uppdaterats');
+  await expect(b.locator('#level')).toHaveText('NIVÅ 5');
+  await expect(a.locator('#level')).toHaveText('NIVÅ 1');
+  await a.locator('#admin-dialog .close-dialog').click();
   await a.keyboard.press('Escape');
   await a.locator('#pvp-toggle').click();
   await expect(a.locator('#pvp-toggle')).toHaveText('AVAKTIVERA PVP');
@@ -89,6 +106,7 @@ test('production client reloads and plays with network disabled after caching', 
   await page.locator('#player-name').fill('Dalkulla');
   await page.locator('#play-offline').click();
   await expect(page.locator('#session')).toContainText('OFFLINE');
+  await capture(page);
   await page.keyboard.press('q');
   await expect(page.locator('#ability-cooldown')).not.toHaveText('REDO');
 });

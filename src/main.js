@@ -37,7 +37,12 @@ let elapsed = 0,
   hudClock = 0,
   saveClock = 0,
   inventorySignature = '';
-let mouse = { x: innerWidth / 2, y: innerHeight / 2, down: false },
+let mouse = { down: false, ads: false },
+  look = { yaw: Math.PI, pitch: 0 },
+  crouch = false,
+  renderClock = 0,
+  releasingMouse = false,
+  hadPointerLock = false,
   keys = new Set(),
   expanded = false,
   storageWarning = false;
@@ -58,6 +63,7 @@ const paused = () => dialogs.some((d) => d.open);
 function resetInput() {
   keys.clear();
   mouse.down = false;
+  mouse.ads = false;
   if (world.players[myId]) world.players[myId].input = cleanInput();
   if (socket?.readyState === WebSocket.OPEN)
     socket.send(JSON.stringify({ type: 'input', input: cleanInput() }));
@@ -120,6 +126,8 @@ function persist() {
   }
 }
 function enter() {
+  look = { yaw: Math.PI, pitch: 0 };
+  crouch = false;
   document.body.classList.add('playing');
   $('menu').hidden = true;
   $('hud').hidden = false;
@@ -134,6 +142,7 @@ function leave(message) {
   socket = null;
   if (old) old.close();
   mode = null;
+  releaseMouse();
   myId = null;
   dialogs.forEach((d) => d.close());
   document.body.classList.remove('playing');
@@ -159,6 +168,7 @@ $('play-offline').onclick = () => {
   loadSave();
   state = snapshot(world);
   enter();
+  captureMouse();
 };
 $('play-online').onclick = () => {
   if (!multiplayerAvailable) return;
@@ -181,7 +191,8 @@ $('play-online').onclick = () => {
       status('Servern svarade inte. Starta spelservern eller välj offline.');
     }
   }, 8000);
-  ws.onopen = () => ws.send(JSON.stringify({ type: 'join', room, name, classId: selected }));
+  ws.onopen = () =>
+    ws.send(JSON.stringify({ type: 'join', room, name, classId: selected, stateAck: true }));
   ws.onmessage = (event) => {
     if (socket !== ws) return;
     let msg;
@@ -190,6 +201,8 @@ $('play-online').onclick = () => {
     } catch {
       return;
     }
+    if ((msg.type === 'welcome' || msg.type === 'state') && Number.isSafeInteger(msg.seq))
+      ws.send(JSON.stringify({ type: 'state_ack', seq: msg.seq }));
     if (msg.type === 'welcome') {
       clearTimeout(timeout);
       mode = 'online';
@@ -199,6 +212,8 @@ $('play-online').onclick = () => {
       enter();
     } else if (msg.type === 'state') {
       state = msg.state;
+      $('session').textContent =
+        `RUM ${roomName} / ${Object.keys(state.players).length} AV 8 SPELARE`;
       if (adminRefresh) {
         adminRefresh = false;
         renderAdmin(true);
@@ -233,6 +248,7 @@ function openDialog(dialog) {
   if (!mode || $('death-dialog').open) return;
   dialogs.forEach((d) => d.close());
   resetInput();
+  releaseMouse();
   dialog.showModal();
   if (dialog === $('inventory-dialog')) renderInventory();
   if (dialog === $('admin-dialog')) renderAdmin(true);
@@ -256,6 +272,7 @@ $('pause-button').onclick = pause;
 $('resume').onclick = () => {
   $('pause-dialog').close();
   resetInput();
+  captureMouse();
 };
 $('leave').onclick = () => leave();
 $('inventory-button').onclick = () => openDialog($('inventory-dialog'));
@@ -320,8 +337,9 @@ window.addEventListener('keydown', (e) => {
     else if (!paused()) openDialog($('inventory-dialog'));
     return;
   }
-  if (paused()) return;
+  if (paused() || !pointerLocked()) return;
   keys.add(k);
+  if (k === 'c') crouch = !crouch;
   if (k === 'q') action({ type: 'ability' });
   if (k === 'e') action({ type: 'loot' });
   if (k === 'r') action({ type: 'reload' });
@@ -335,16 +353,55 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 window.addEventListener('blur', resetInput);
-window.addEventListener('pointermove', (e) => {
-  mouse.x = e.clientX;
-  mouse.y = e.clientY;
-  $('crosshair').style.left = `${e.clientX}px`;
-  $('crosshair').style.top = `${e.clientY}px`;
+const pointerLocked = () => document.pointerLockElement === $('scene');
+function releaseMouse() {
+  if (pointerLocked()) {
+    releasingMouse = true;
+    document.exitPointerLock();
+  }
+}
+function captureMouse() {
+  if (mode && !paused())
+    $('scene')
+      .requestPointerLock()
+      ?.catch?.(() => updateCaptureHint());
+}
+function updateCaptureHint() {
+  $('capture-mouse').hidden = !mode || paused() || pointerLocked();
+}
+$('capture-mouse').onclick = captureMouse;
+for (const d of dialogs) d.addEventListener('close', updateCaptureHint);
+window.addEventListener('mousemove', (e) => {
+  if (!mode || paused() || !pointerLocked()) return;
+  look.yaw -= e.movementX * 0.0022;
+  look.pitch = Math.max(-1.45, Math.min(1.45, look.pitch - e.movementY * 0.0022));
 });
-$('scene').addEventListener('pointerdown', (e) => {
-  if (e.button === 0 && mode && !paused()) mouse.down = true;
+$('scene').addEventListener('mousedown', (e) => {
+  if (!mode || paused()) return;
+  if (!pointerLocked()) {
+    captureMouse();
+    return;
+  }
+  if (e.button === 0) mouse.down = true;
+  if (e.button === 2) mouse.ads = true;
 });
-window.addEventListener('pointerup', () => (mouse.down = false));
+window.addEventListener('mouseup', (e) => {
+  if (e.button === 0) mouse.down = false;
+  if (e.button === 2) mouse.ads = false;
+});
+$('scene').addEventListener('contextmenu', (e) => e.preventDefault());
+document.addEventListener('pointerlockchange', () => {
+  const locked = pointerLocked();
+  if (locked) $('scene').focus({ preventScroll: true });
+  if (hadPointerLock && !locked) {
+    resetInput();
+    if (mode && !paused() && !releasingMouse) pause();
+  }
+  releasingMouse = false;
+  hadPointerLock = locked;
+  updateCaptureHint();
+});
+document.addEventListener('pointerlockerror', updateCaptureHint);
 window.addEventListener('beforeunload', persist);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
@@ -409,6 +466,11 @@ function updateHUD() {
     mode === 'offline'
       ? 'OFFLINE / ENSAM PÅ SKIFTET'
       : `RUM ${roomName} / ${Object.keys(state.players).length} AV 8 SPELARE`;
+  updateCaptureHint();
+  $('compass').textContent =
+    `${Math.round((((180 - (look.yaw * 180) / Math.PI) % 360) + 360) % 360)}°`;
+  $('stance').textContent = p.crouch ? 'HUKANDE' : p.sprinting ? 'SPRINGER' : 'STÅENDE';
+  $('stamina').textContent = `UTHÅLLIGHET ${Math.ceil(p.stamina ?? 100)}`;
   $('admin-open').hidden = !isAdmin(p);
   if ($('admin-dialog').open) renderAdmin();
   $('player-class').textContent = c.name.toUpperCase();
@@ -474,7 +536,7 @@ function updateHUD() {
   drawMap($('minimap'), state, myId, expanded);
 }
 function frame(now) {
-  const dt = Math.min(0.1, (now - last) / 1000);
+  const dt = Math.min(0.5, (now - last) / 1000);
   last = now;
   elapsed += dt;
   accumulator += dt;
@@ -483,18 +545,25 @@ function frame(now) {
   saveClock += dt;
   const p = state.players[myId];
   if (mode && p) {
-    const input = paused()
-      ? cleanInput()
-      : cleanInput({
-          x:
-            Number(keys.has('d') || keys.has('arrowright')) -
-            Number(keys.has('a') || keys.has('arrowleft')),
-          z:
-            Number(keys.has('s') || keys.has('arrowdown')) -
-            Number(keys.has('w') || keys.has('arrowup')),
-          aim: view.aim(mouse.x, mouse.y, p),
-          fire: mouse.down,
-        });
+    const forward =
+      Number(keys.has('w') || keys.has('arrowup')) - Number(keys.has('s') || keys.has('arrowdown'));
+    const strafe =
+      Number(keys.has('d') || keys.has('arrowright')) -
+      Number(keys.has('a') || keys.has('arrowleft'));
+    const input = cleanInput({
+      aim: look.yaw,
+      pitch: look.pitch,
+      ...(!paused() && pointerLocked()
+        ? {
+            x: Math.sin(look.yaw) * forward - Math.cos(look.yaw) * strafe,
+            z: Math.cos(look.yaw) * forward + Math.sin(look.yaw) * strafe,
+            fire: mouse.down,
+            ads: mouse.ads,
+            sprint: keys.has('shift'),
+            crouch,
+          }
+        : {}),
+    });
     if (mode === 'offline') {
       world.players[myId].input = input;
       while (accumulator >= 0.05) {
@@ -516,7 +585,19 @@ function frame(now) {
     }
   }
   if (!mode || mode === 'online') accumulator = 0;
-  view?.render(state, myId, dt, Boolean(mode), elapsed);
+  renderClock += dt;
+  const active = mode && pointerLocked() && !paused();
+  const interval = view?.softwareRenderer ? (active ? 1 / 20 : 0.5) : active ? 1 / 60 : 1 / 15;
+  document.body.classList.toggle('aiming', Boolean(active && mouse.ads));
+  if (renderClock >= interval && !document.hidden) {
+    view?.render(state, myId, renderClock, Boolean(mode), elapsed, {
+      ...look,
+      ads: active && mouse.ads,
+      moving: active && keys.size > 0,
+      crouch,
+    });
+    renderClock = 0;
+  }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

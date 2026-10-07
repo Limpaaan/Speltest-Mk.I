@@ -509,3 +509,41 @@ dialog h2 {
 [aria-invalid='true'] {
   outline: 2px solid #c87564;
 }
+
+#capture-mouse {
+  position: fixed;
+  left: 50%;
+  top: 47%;
+  transform: translate(-50%, -50%);
+  z-index: 8;
+  background: #173328df;
+  padding: 22px;
+  color: #eedaa1;
+  border: 1px solid #c6b27e;
+  cursor: pointer;
+}
+#capture-mouse[hidden] {
+  display: none;
+}
+.playing #crosshair {
+  left: 50% !important;
+  top: 50% !important;
+  pointer-events: none;
+}
+#compass {
+  color: #d4c9ab;
+  font-size: 12px;
+  text-align: center;
+}
+#stance,
+#stamina {
+  font-size: 10px;
+  color: #aec1aa;
+  margin-right: 10px;
+}
+body.aiming #crosshair {
+  opacity: 0.15;
+}
+#scene:focus {
+  outline: none;
+}

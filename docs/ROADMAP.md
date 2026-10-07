@@ -6,8 +6,13 @@ Avesta: Sista skiftet ska bli ett 3D-RPG där Dalarnas lokala identitet genomsyr
 
 Prototypen prövar grundloopen **utforska → strid → bärga → utveckla karaktären → ta tillbaka ett område**, både offline och tillsammans. Den innehåller ett fåtal spelmekaniska system, inte ”alla klassiska RPG-element”.
 
-## 0.2 — Verkligt Avesta och bättre strid
+## Levererat i 0.2
 
+FPS med muslås, höjdledssiktning, sikte, sprint, hukning och huvudträffar; texturerade byggnader och vapen; obligatoriska användarnamn och AdminL-verktyg offline/online. Offlinecache fungerar även under en GitHub Pages-reposökväg. Webbpubliceringsflödet är förberett, men en publik adress är inte verifierad.
+
+## Nästa steg — Verkligt Avesta och bättre strid
+
+- Återhämta Copernicus-höjddata och integrera samma höjdprovtagning i rendering, kollision, skott och multiplayer. Street View-referenser återstår; kartdata och kommunala referensbilder räcker inte för att verifiera alla fasader.
 - Komplettera OSM-grunden enligt `MAP.md`: verifiera Plushuset och Åsbo, inför fullständiga vattenytor och gångbroar, kontrollera framkomlighet och bygg igenkännbara byggnadsmodeller.
 - Navmesh/pathfinding, hotbaserad AI, patruller och fastna-inte-beteende.
 - Mer särskiljande bossfaser, vapenanimationer, ljud, träffrespons, skademarkörer och en tydligare introduktion.
