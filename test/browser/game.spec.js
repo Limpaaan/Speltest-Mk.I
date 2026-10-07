@@ -131,3 +131,39 @@ test('mandatory username and AdminL tools create loot and edit level offline', a
   await page.keyboard.press('i');
   await expect(page.locator('#inventory-items')).toContainText('Dalälvens öga');
 });
+
+test('Maja offers a contract and workshop purchases survive offline reload', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/');
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'avesta-save-v1-stalvakt',
+      JSON.stringify({ version: 1, classId: 'stalvakt', level: 2, scrap: 200 }),
+    ),
+  );
+  await page.locator('#player-name').fill('Verkstadsbesökare');
+  await page.locator('#play-offline').click();
+  await capture(page);
+  await page.keyboard.press('e');
+  await expect(page.locator('#camp-dialog')).toBeVisible();
+  await expect(page.locator('#contract-title')).toHaveText('Bud till Koppardalen');
+  await page.locator('#contract-action').click();
+  await expect(page.locator('#contract-action')).toHaveText('UPPDRAGET PÅGÅR');
+  await page.locator('#craft-rifle').click();
+  await expect(page.locator('#camp-message')).toContainText('tillverkad');
+  await page.locator('#upgrade-armor').click();
+  await expect(page.locator('#workshop-stats')).toContainText('100 skrot · Rustning 1/3');
+  await page.screenshot({ path: '.local/workshop.png' });
+  await page.locator('#camp-dialog .close-dialog').click();
+  await page.keyboard.press('Escape');
+  await page.locator('#leave').click();
+  await page.reload();
+  await page.locator('#player-name').fill('Verkstadsbesökare');
+  await page.locator('#play-offline').click();
+  await capture(page);
+  await page.keyboard.press('e');
+  await expect(page.locator('#workshop-stats')).toContainText('100 skrot · Rustning 1/3');
+  await expect(page.locator('#contract-action')).toHaveText('UPPDRAGET PÅGÅR');
+  expect(errors).toEqual([]);
+});

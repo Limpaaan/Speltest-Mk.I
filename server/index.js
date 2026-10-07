@@ -1,4 +1,5 @@
 import { adminAction, validateUsername } from '../shared/admin.js';
+import packageInfo from '../package.json' with { type: 'json' };
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -33,7 +34,14 @@ export function createGameServer({
     const requestPath = new URL(req.url, 'http://localhost').pathname;
     if (requestPath === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      return res.end(JSON.stringify({ status: 'ok', rooms: rooms.size, tickRate: 20 }));
+      return res.end(
+        JSON.stringify({
+          status: 'ok',
+          version: packageInfo.version,
+          rooms: rooms.size,
+          tickRate: 20,
+        }),
+      );
     }
     if (!['GET', 'HEAD'].includes(req.method)) {
       res.writeHead(405);

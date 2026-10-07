@@ -1,4 +1,51 @@
 import * as THREE from 'three';
+export function spruceMaterial() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  let seed = 181;
+  const random = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+  ctx.strokeStyle = '#554c37';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(128, 15);
+  ctx.lineTo(128, 507);
+  ctx.stroke();
+  // Original needle/branch drawing, cut out with alpha; no external image assets.
+  for (let y = 26; y < 450; y += 13) {
+    const reach = 10 + (y / 450) * 104;
+    for (const side of [-1, 1]) {
+      const endX = 128 + side * reach * (0.75 + random() * 0.25);
+      const endY = y + 27 + random() * 15;
+      ctx.strokeStyle = '#454b32';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(128, y);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+      for (let i = 0; i < 42; i++) {
+        const t = random(),
+          x = 128 + (endX - 128) * t,
+          py = y + (endY - y) * t;
+        ctx.strokeStyle = ['#374a33', '#506345', '#71805a', '#475c3e'][Math.floor(random() * 4)];
+        ctx.lineWidth = 1.7;
+        ctx.beginPath();
+        ctx.moveTo(x, py);
+        ctx.lineTo(x + side * (2 + random() * 10), py - 7 - random() * 19);
+        ctx.stroke();
+      }
+    }
+  }
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshStandardMaterial({
+    map,
+    alphaTest: 0.42,
+    side: THREE.DoubleSide,
+    roughness: 1,
+  });
+}
 export function surfaces() {
   let seed = 7919;
   const random = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;

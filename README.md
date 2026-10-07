@@ -4,7 +4,7 @@
 
 En spelbar, svenskspråkig **3D RPG-lootershooterprototyp** i ett postapokalyptiskt Avesta. Stadens försvarare möter det fiktiva danska **Järnsundskompaniet**, en militär invasionsfraktion. Berättelsen handlar om hembygd, gemenskap och motstånd. Fraktionen representerar inte danskar som folk.
 
-Det här är en första vertikal prototyp, inte ett färdigt storskaligt RPG. Version 0.2 har förstapersonsvy, texturerade fasader, synligt vapen och en ombyggd Dalahäst. Grafiken är fortfarande en förenklad prototyp; terrängen är plan tills verkliga höjddata har återhämtats och integrerats. **Vägar och älvförlopp bygger på OpenStreetMap. Sex landmärken har källbelagda positioner; Plushuset och Åsbo är fortfarande ungefärligt placerade.** Se [kartans status och datakällor](docs/MAP.md).
+Det här är en första vertikal prototyp, inte ett färdigt storskaligt RPG. Version 0.3 har förstapersonsvy, texturerade fasader, synligt vapen och en ombyggd Dalahäst. Grafiken är fortfarande en förenklad prototyp; terrängen är plan tills verkliga höjddata har återhämtats och integrerats. **Vägar och älvförlopp bygger på OpenStreetMap. Sex landmärken har källbelagda positioner; Plushuset och Åsbo är fortfarande ungefärligt placerade.** Se [kartans status och datakällor](docs/MAP.md).
 
 ![FPS-vyn i Avesta: Sista skiftet](docs/images/fps.png)
 
@@ -47,6 +47,9 @@ Vites utvecklingsserver använder port **5173** och skickar `/ws` vidare till sp
 - Skyddad samlingsplats: inga inkommande skador eller skott från skyddszonen. Lämna den ljusa markringen för att inleda strid.
 - FPS-strid med muslås, höjdledssiktning, huvudträffar, sikte, sprint med uthållighet, hukning, vapenmagasin och omladdning. Byggnader och låga hinder blockerar skott efter sin höjd.
 - Tre vapentyper: Bruksbössan, Slaggkastaren och Dalälvens öga. Fyra sällsynthetsgrader från vanlig till legendarisk; vapen skalar med nivå.
+- Maja vid samlingsplatsen erbjuder tre sammanhängande uppdrag: rekognoscera Koppardalen, slå tillbaka vid Verket och befria Dalahästen. Återvänd för XP och skrot; uppdragen sparas offline.
+- Verkstad hos Maja: tillverka ovanliga vapen på din nivå och förstärk bruksrustningen i tre steg, med högst 24 % skademinskning. Priser, närhet och packningsutrymme kontrolleras av simulationen/servern.
+- Fiender patrullerar, reagerar på angripare och söker en väg runt byggnader och via farbara broar. En begränsad rutnätsökning stoppar dem om ingen väg hittas.
 - Personligt loot, 16 packningsplatser, utrustning, skrotning, läkning med skrot, nivåer upp till 30 och två talangspår.
 - Tre grunduppdrag: besegra fem soldater, bärga tre fynd och besegra en boss.
 - Bossarna **Slaggjarlen** vid Verket och **Ryttmästare Mörk** vid Dalahästen har förvarnade områdesattacker och garanterat legendariskt loot. Vanliga fiender återkommer efter 35 sekunder, bossar efter 120 sekunder.
@@ -63,7 +66,7 @@ Vites utvecklingsserver använder port **5173** och skickar `/ws` vidare till sp
 | F2                     | Fuskmeny för AdminL               |
 | Q                      | Klassförmåga                      |
 | R                      | Ladda om                          |
-| E                      | Bärga eget loot i närheten        |
+| E                      | Prata med Maja / bärga eget loot  |
 | H                      | Använd 15 skrot för 50 hälsa      |
 | I                      | Packning, utrustning och talanger |
 | M                      | Stor översiktskarta               |
@@ -120,5 +123,5 @@ autentisering. Vanliga spelare kan inte förfalska en annan sockets behörighet.
 
 ## Publicera webbklienten
 
-Spelare behöver ingen installation. GitHub Pages-flödet är förberett; se
+Spelare behöver ingen installation. GitHub Pages-flödet och Render Blueprint är förberedda; se
 [webbpublicering](docs/DEPLOYMENT.md). Ingen aktiv publik speladress är ännu verifierad.

@@ -1,0 +1,18 @@
+# Render Blueprint: one free Node web service, with no paid database or disk.
+services:
+  - type: web
+    name: avesta-sista-skiftet
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm ci && npm test && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: HOST
+        value: 0.0.0.0
+      - key: ALLOWED_ORIGIN
+        value: https://limpaaan.github.io

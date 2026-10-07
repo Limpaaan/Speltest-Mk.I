@@ -10,18 +10,22 @@ Prototypen prövar grundloopen **utforska → strid → bärga → utveckla kara
 
 FPS med muslås, höjdledssiktning, sikte, sprint, hukning och huvudträffar; texturerade byggnader och vapen; obligatoriska användarnamn och AdminL-verktyg offline/online. Offlinecache fungerar även under en GitHub Pages-reposökväg. Webbpubliceringsflödet är förberett, men en publik adress är inte verifierad.
 
+## Levererat i 0.3
+
+A*-navigation runt hinder, patruller och angriparprioritering. Maja med tre uppdrag och en servervaliderad verkstad för vapen och tre rustningsnivåer; sparning offline. Barrsilhuetter ersätter konformade granar, fiender har gångrörelser och bossattacker har synlig varningsring. Pages-flödet publicerar vid push när tjänsten aktiverats; Render Blueprint är förberedd för gratisplan. Faktisk publicering återstår att verifiera.
+
 ## Nästa steg — Verkligt Avesta och bättre strid
 
 - Återhämta Copernicus-höjddata och integrera samma höjdprovtagning i rendering, kollision, skott och multiplayer. Street View-referenser återstår; kartdata och kommunala referensbilder räcker inte för att verifiera alla fasader.
 - Komplettera OSM-grunden enligt `MAP.md`: verifiera Plushuset och Åsbo, inför fullständiga vattenytor och gångbroar, kontrollera framkomlighet och bygg igenkännbara byggnadsmodeller.
-- Navmesh/pathfinding, hotbaserad AI, patruller och fastna-inte-beteende.
+- Förfina navigationen för trånga passager, gruppsamordning och taktiska skydd.
 - Mer särskiljande bossfaser, vapenanimationer, ljud, träffrespons, skademarkörer och en tydligare introduktion.
 - Justerad svårighetsgrad för gruppstorlek, bättre lootbalans och progressionstest över längre spelsessioner.
 - Inställningar för ljud, grafik, ombindning av kontroller och förbättrad tillgänglighet.
 
-## 0.3 — RPG-system
+## Fortsatta RPG-system
 
-- NPC:er, dialog, questkedjor, berättelseval och återtagna områden.
+- Fler NPC:er och uppdragskedjor, förgrenad dialog, berättelseval och återtagna områden.
 - Rustningsplatser, affixer, föremålsset, handel, hantverk och ekonomibalans.
 - Djupare klassträd, specialiseringar, co-op-roller och fler fiendearketyper.
 - Varaktig offlinevärld, sparslots, export/import och versionsmigrering.

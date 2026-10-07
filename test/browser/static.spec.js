@@ -38,6 +38,8 @@ test('a repository subpath caches and starts solo with the network disabled', as
   try {
     const page = await context.newPage();
     await page.goto(`http://127.0.0.1:${server.address().port}${prefix}`);
+    if (process.env.EXPECT_STATIC_SOLO === '1')
+      await expect(page.locator('#play-online')).toBeDisabled();
     await page.evaluate(async () => {
       await navigator.serviceWorker.ready;
       if (!navigator.serviceWorker.controller)

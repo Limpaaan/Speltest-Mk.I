@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP, waterAt, segmentDistance, eyeHeight } from '../shared/map.js';
 import { CLASSES, RARITY_COLORS } from '../shared/game.js';
-import { surfaces } from './surfaces.js';
+import { surfaces, spruceMaterial } from './surfaces.js';
+import { CAMP } from '../shared/progression.js';
 export class WorldView {
   constructor(canvas) {
     this.renderer = new THREE.WebGLRenderer({
@@ -229,6 +230,7 @@ export class WorldView {
       }
     }
     this.vegetation();
+    this.buildCamp();
     const p = MAP.places.find((p) => p.id === 'aalto');
     this.sign('AVESTA / VI STÅR KVAR', p.x + p.w / 2 + 0.12, 3.5, p.z + 1, 8, Math.PI / 2);
   }
@@ -373,24 +375,27 @@ export class WorldView {
         this.s.bark,
         180,
       ),
-      crowns = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 8, 1), this.s.leaf, 540);
+      crowns = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), spruceMaterial(), 540);
     let count = 0;
     for (let i = 0; i < 700 && count < 180; i++) {
       const x = (rng() - 0.5) * 1100,
         z = (rng() - 0.5) * 1100;
       if (
         waterAt(x, z) ||
+        MAP.roads.some((r) => segmentDistance(x, z, ...r.points) < 4.5) ||
         MAP.places.some((p) => Math.abs(x - p.x) < p.w / 2 + 10 && Math.abs(z - p.z) < p.d / 2 + 10)
       )
         continue;
       const h = 6 + rng() * 7;
+      dummy.rotation.y = 0;
       dummy.position.set(x, h / 2, z);
       dummy.scale.set(1, h, 1);
       dummy.updateMatrix();
       trunks.setMatrixAt(count, dummy.matrix);
       for (let j = 0; j < 3; j++) {
-        dummy.position.set(x, h * 0.5 + j * h * 0.17, z);
-        dummy.scale.set(2.2 - j * 0.4, h * 0.6, 2.2 - j * 0.4);
+        dummy.position.set(x, h * 0.5, z);
+        dummy.rotation.y = (j * Math.PI) / 3 + count;
+        dummy.scale.set(h * 0.48, h, 1);
         dummy.updateMatrix();
         crowns.setMatrixAt(count * 3 + j, dummy.matrix);
       }
@@ -398,8 +403,24 @@ export class WorldView {
     }
     trunks.count = count;
     crowns.count = count * 3;
-    trunks.castShadow = true;
+    trunks.castShadow = crowns.castShadow = true;
     this.scene.add(trunks, crowns);
+  }
+  buildCamp() {
+    const { x, z } = CAMP;
+    const maja = this.soldier({ classId: 'kopparslagare' });
+    maja.position.set(x, 0, z);
+    maja.rotation.y = -0.9;
+    this.scene.add(maja);
+    this.box(x + 2, 0.85, z - 2, 3.2, 0.18, 1.1, this.s.wood);
+    for (const dx of [0.6, 3.4])
+      for (const dz of [-2.4, -1.6]) this.box(x + dx, 0.4, z + dz, 0.1, 0.8, 0.1, this.s.metal);
+    this.box(x + 2, 1.05, z - 2, 0.75, 0.25, 0.6, this.s.rust);
+    for (const dx of [-1, 4])
+      for (const dz of [-3.5, 0.5]) this.box(x + dx, 1.6, z + dz, 0.09, 3.2, 0.09, this.s.wood);
+    this.box(x + 1.5, 3.2, z - 1.5, 5.6, 0.08, 4.6, this.s.roof);
+    this.sign('MAJAS SKIFTBOD / UPPDRAG & VERKSTAD', x + 1.5, 2.7, z + 0.65, 5);
+    this.sign('VI LÄMNAR INGEN BAKOM OSS', x + 1.5, 1.7, z - 3.4, 4);
   }
   part(parent, geo, material, x, y, z, sx = 1, sy = 1, sz = 1) {
     const mesh = new THREE.Mesh(geo, material);
@@ -435,8 +456,11 @@ export class WorldView {
       sphere = new THREE.SphereGeometry(1, 12, 8);
     this.part(group, capsule, uniform, 0, 1.13, 0, 1.7, 0.65, 1);
     this.part(group, sphere, this.s.metal, 0, 1.69, 0, 0.16, 0.17, 0.15);
+    group.userData.legs = [];
     for (const side of [-1, 1]) {
-      this.part(group, capsule, uniform, side * 0.13, 0.47, 0, 0.72, 1.05, 0.8);
+      group.userData.legs.push(
+        this.part(group, capsule, uniform, side * 0.13, 0.47, 0, 0.72, 1.05, 0.8),
+      );
       this.part(group, capsule, uniform, side * 0.25, 1.1, 0.13, 0.5, 0.7, 0.5).rotation.x = -0.4;
       this.part(group, this.boxGeo, this.s.metal, side * 0.13, 0.08, 0.055, 0.18, 0.14, 0.28);
     }
@@ -445,7 +469,26 @@ export class WorldView {
     rifle.rotation.y = Math.PI;
     group.add(rifle);
     group.userData.geometries = [capsule, sphere];
-    if (entity.type === 'boss') group.scale.setScalar(3.1 / 1.85);
+    if (entity.type === 'boss') {
+      const scale = 3.1 / 1.85;
+      group.scale.setScalar(scale);
+      const geo = new THREE.RingGeometry(22.8 / scale, 24 / scale, 64);
+      const mat = new THREE.MeshBasicMaterial({
+        color: '#ef873d',
+        transparent: true,
+        opacity: 0.6,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const ring = new THREE.Mesh(geo, mat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.035;
+      ring.visible = false;
+      group.add(ring);
+      group.userData.warning = ring;
+      group.userData.geometries.push(geo);
+      group.userData.warningMaterial = mat;
+    }
     return group;
   }
   buildWeapon() {
@@ -493,6 +536,14 @@ export class WorldView {
         this.entities.set(e.id, mesh);
         this.scene.add(mesh);
       }
+      const moving = Math.hypot(mesh.position.x - e.x, mesh.position.z - e.z) > 0.015;
+      mesh.userData.legs?.forEach(
+        (leg, i) => (leg.rotation.x = moving ? Math.sin(time * 8 + i * Math.PI) * 0.42 : 0),
+      );
+      if (mesh.userData.warning) {
+        mesh.userData.warning.visible = e.windup > 0;
+        mesh.userData.warning.material.opacity = 0.4 + Math.sin(time * 14) * 0.2;
+      }
       mesh.position.lerp(new THREE.Vector3(e.x, 0, e.z), Math.min(1, dt * 20));
       mesh.visible =
         (e.loot ? e.owner === myId : e.hp > 0) &&
@@ -505,6 +556,7 @@ export class WorldView {
       if (!seen.has(id)) {
         this.scene.remove(mesh);
         mesh.userData.ownMaterial.dispose();
+        mesh.userData.warningMaterial?.dispose();
         mesh.traverse((child) => child.userData.geometries?.forEach((g) => g.dispose()));
         this.entities.delete(id);
       }

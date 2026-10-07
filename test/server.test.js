@@ -172,3 +172,31 @@ test('a slow browser receives only one unacknowledged snapshot then jumps to the
   await wait(250);
   assert.equal(states.length, 1);
 });
+
+test('Pages-origin clients can join the deployment server and crafting stays authoritative', async (t) => {
+  const origin = 'https://limpaaan.github.io';
+  const { url } = await server(t, { allowedOrigin: origin });
+  const ws = new WebSocket(url, { origin });
+  await new Promise((resolve, reject) => {
+    ws.once('open', resolve);
+    ws.once('error', reject);
+  });
+  let response = message(ws, 'welcome');
+  ws.send(JSON.stringify({ type: 'join', room: 'PAGES', name: 'AdminL', classId: 'stalvakt' }));
+  const welcome = await response;
+  response = message(ws, 'admin_result');
+  ws.send(JSON.stringify({ type: 'admin', action: { type: 'set_stats', stats: { scrap: 100 } } }));
+  assert.equal((await response).ok, true);
+  response = message(ws, 'state');
+  ws.send(
+    JSON.stringify({
+      type: 'action',
+      action: { type: 'craft', kind: 'rifle', cost: 0, rarity: 3, level: 30 },
+    }),
+  );
+  const p = (await response).state.players[welcome.id];
+  assert.equal(p.scrap, 40);
+  assert.equal(p.inventory.length, 2);
+  assert.equal(p.inventory[1].rarity, 1);
+  assert.equal(p.inventory[1].level, 1);
+});

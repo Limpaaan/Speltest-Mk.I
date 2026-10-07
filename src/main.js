@@ -1,3 +1,11 @@
+import {
+  CAMP,
+  CONTRACTS,
+  RECIPES,
+  armorCost,
+  atCamp,
+  campaignStatus,
+} from '../shared/progression.js';
 import { validateUsername, isAdmin, adminAction } from '../shared/admin.js';
 import './style.css';
 import { WorldView, drawMap } from './view.js';
@@ -178,19 +186,26 @@ $('play-online').onclick = () => {
   if (!/^[A-Z0-9-]{1,16}$/.test(room))
     return status('Ange en rumskod med 1–16 bokstäver, siffror eller bindestreck.');
   $('play-online').disabled = true;
-  status('Ansluter till skiftets server …');
+  status(
+    configuredServer
+      ? 'Ansluter … en vilande gratisserver kan behöva upp till 90 sekunder för att starta.'
+      : 'Ansluter till skiftets server …',
+  );
   const ws = new WebSocket(
     configuredServer || `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`,
   );
   socket = ws;
-  const timeout = setTimeout(() => {
-    if (socket === ws && mode !== 'online') {
-      socket = null;
-      ws.close();
-      $('play-online').disabled = !multiplayerAvailable;
-      status('Servern svarade inte. Starta spelservern eller välj offline.');
-    }
-  }, 8000);
+  const timeout = setTimeout(
+    () => {
+      if (socket === ws && mode !== 'online') {
+        socket = null;
+        ws.close();
+        $('play-online').disabled = !multiplayerAvailable;
+        status('Servern svarade inte. Starta spelservern eller välj offline.');
+      }
+    },
+    configuredServer ? 90000 : 8000,
+  );
   ws.onopen = () =>
     ws.send(JSON.stringify({ type: 'join', room, name, classId: selected, stateAck: true }));
   ws.onmessage = (event) => {
@@ -252,6 +267,7 @@ function openDialog(dialog) {
   dialog.showModal();
   if (dialog === $('inventory-dialog')) renderInventory();
   if (dialog === $('admin-dialog')) renderAdmin(true);
+  if (dialog === $('camp-dialog')) renderCamp();
 }
 function pause() {
   if (!mode) return;
@@ -341,7 +357,10 @@ window.addEventListener('keydown', (e) => {
   keys.add(k);
   if (k === 'c') crouch = !crouch;
   if (k === 'q') action({ type: 'ability' });
-  if (k === 'e') action({ type: 'loot' });
+  if (k === 'e') {
+    if (atCamp(state.players[myId])) openDialog($('camp-dialog'));
+    else action({ type: 'loot' });
+  }
   if (k === 'r') action({ type: 'reload' });
   if (k === 'h') action({ type: 'heal' });
   if (k === 'm') {
@@ -420,11 +439,12 @@ function renderInventory() {
     p.power,
     p.vitality,
     p.scrap,
+    p.armor,
   ]);
   if (signature === inventorySignature) return;
   inventorySignature = signature;
   $('inventory-stats').textContent =
-    `${p.scrap} skrot · ${p.points} talangpoäng · Eldkraft ${p.power} · Livskraft ${p.vitality} · ${p.inventory.length}/16 platser`;
+    `${p.scrap} skrot · ${p.points} talangpoäng · Eldkraft ${p.power} · Livskraft ${p.vitality} · Rustning ${p.armor || 0}/3 · ${p.inventory.length}/16 platser`;
   $('talent-power').disabled = $('talent-vitality').disabled = p.points <= 0;
   $('inventory-items').replaceChildren();
   for (const item of p.inventory) {
@@ -473,6 +493,12 @@ function updateHUD() {
   $('stamina').textContent = `UTHÅLLIGHET ${Math.ceil(p.stamina ?? 100)}`;
   $('admin-open').hidden = !isAdmin(p);
   if ($('admin-dialog').open) renderAdmin();
+  if ($('camp-dialog').open) renderCamp();
+  const contract = campaignStatus(p);
+  $('campaign-title').textContent = contract.title;
+  $('campaign-progress').textContent = contract.ready
+    ? 'Återvänd till Maja för din belöning'
+    : contract.progress;
   $('player-class').textContent = c.name.toUpperCase();
   $('level').textContent = `NIVÅ ${p.level}`;
   $('health-fill').style.width = `${(p.hp / maxHp(p)) * 100}%`;
@@ -495,11 +521,13 @@ function updateHUD() {
       : '';
   $('notification').textContent = message;
   const nearby = state.loot.find((l) => l.owner === myId && Math.hypot(l.x - p.x, l.z - p.z) < 12);
-  $('interact').textContent = inSanctuary(p)
-    ? 'WASD · Lämna samlingsplatsen för att inleda strid'
-    : nearby
-      ? `E · Bärga ${RARITIES[nearby.weapon.rarity].toLowerCase()} ${nearby.weapon.name}`
-      : '';
+  $('interact').textContent = atCamp(p)
+    ? 'E · Prata med Maja / uppdrag och verkstad'
+    : inSanctuary(p)
+      ? 'WASD · Lämna samlingsplatsen för att inleda strid'
+      : nearby
+        ? `E · Bärga ${RARITIES[nearby.weapon.rarity].toLowerCase()} ${nearby.weapon.name}`
+        : '';
   const place = [...MAP.places].sort(
     (a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z),
   )[0];
@@ -678,4 +706,44 @@ $('admin-heal').onclick = () => sendAdmin({ type: 'heal', targetId: $('admin-tar
 if (!multiplayerAvailable) {
   $('play-online').disabled = true;
   $('play-online').textContent = 'MULTIPLAYER KRÄVER EN SPELSERVER';
+}
+
+for (const [kind, recipe] of Object.entries(RECIPES)) {
+  const button = document.createElement('button');
+  button.className = 'secondary';
+  button.id = `craft-${kind}`;
+  button.textContent = `${recipe.name} · ${recipe.cost} skrot`;
+  button.onclick = () => action({ type: 'craft', kind });
+  $('workshop-recipes').append(button);
+}
+$('contract-action').onclick = () => action({ type: 'contract' });
+$('upgrade-armor').onclick = () => action({ type: 'armor' });
+function renderCamp() {
+  const p = state.players[myId];
+  if (!p) return;
+  const status = campaignStatus(p),
+    contract = CONTRACTS[p.campaign.step];
+  $('contract-title').textContent = status.title;
+  $('contract-story').textContent = contract
+    ? contract.text
+    : 'Du har fullföljt skiftets tre uppdrag. Verkstaden står fortfarande öppen.';
+  $('contract-progress').textContent =
+    status.progress + (contract ? ` · Belöning: ${contract.xp} XP, ${contract.scrap} skrot` : '');
+  $('contract-action').textContent = status.complete
+    ? 'ALLA UPPDRAG KLARA'
+    : !p.campaign.active
+      ? 'TA UPPDRAGET'
+      : status.ready
+        ? 'LÄMNA IN UPPDRAGET'
+        : 'UPPDRAGET PÅGÅR';
+  $('contract-action').disabled =
+    status.complete || (p.campaign.active && !status.ready) || !atCamp(p);
+  $('workshop-stats').textContent =
+    `${p.scrap} skrot · Rustning ${p.armor}/3 (${p.armor * 8}% skademinskning). Vapen tillverkas som ovanliga på din nuvarande nivå ${p.level}.`;
+  for (const [kind, recipe] of Object.entries(RECIPES))
+    $('craft-' + kind).disabled = p.scrap < recipe.cost || p.inventory.length >= 16 || !atCamp(p);
+  $('upgrade-armor').textContent =
+    p.armor >= 3 ? 'RUSTNING FULLT FÖRSTÄRKT' : `FÖRSTÄRK BRUKSRUSTNING · ${armorCost(p)} SKROT`;
+  $('upgrade-armor').disabled = p.armor >= 3 || p.scrap < armorCost(p) || !atCamp(p);
+  $('camp-message').textContent = state.time < p.messageUntil ? p.message : '';
 }

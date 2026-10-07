@@ -16,18 +16,20 @@ flowchart LR
 
 - `join`: rumskod, obligatoriskt unikt visningsnamn, klass och valfri `stateAck`. Servern genererar spelar-ID och alla startvärden.
 - `input`: x/z i intervallet −1…1, siktningsvinkel, vertikal siktning samt avfyrning, sprint, hukning och sikte. Rörelse normaliseras; NaN, Infinity och oväntade typer neutraliseras. Utebliven input i 500 ms stoppar rörelse/avfyrning.
-- `action`: omladdning, klassförmåga, loot, utrustning, skrotning, läkning, talang, PvP-val eller återkomst efter död. Servern kontrollerar ägarskap, avstånd, saldo, hälsa och nedkylning.
+- `action`: omladdning, klassförmåga, loot, utrustning, skrotning, läkning, talang, PvP-val, uppdrag, tillverkning, rustningsköp eller återkomst efter död. Servern kontrollerar ägarskap, avstånd, saldo, hälsa och nedkylning.
 - `admin`: exakta namnet AdminL ger socketens spelare rätt att skapa föremål och ändra validerade statistikfält för en spelare i samma rum. Namnet är avsiktligt ingen autentisering.
 - `ack`: webbklienten kvitterar sekvensnumret på varje tillstånd. Servern håller högst ett okvitterat tillstånd per klient och skickar det senaste efter kvittens; långsamma flikar bygger ingen gammal snapshotkö. Äldre klienter utan `stateAck` får ordinarie utskick.
 - `welcome` / `state`: serverns tillstånd. Renderingen interpolerar enheter visuellt. Klientprediction, rollback och laggkompensation är inte implementerade; hög latens märks i spelkänslan.
 - Max åtta spelare per rum, 32 rum, 256 anslutningar, 2 KiB per meddelande och 100 klientmeddelanden/s. Ej anslutna spelare stängs efter 10 sekunder. Rumsdata rensas när alla anslutningar stängts.
 - Kontroller av browser-origin är same-origin, eller det uttryckliga `ALLOWED_ORIGIN` bakom HTTPS-proxy. Detta ersätter inte autentisering. I lokalt läge tillåts verktyg utan Origin-header.
 
-Servern skickar rummets tillstånd till alla deltagare. Servern avgör träffar och progression, men klienter kan läsa fiendepositioner och andra spelares tillstånd. Det finns inget fullständigt anti-cheat eller dolt informationslager. Kollisions- och siktlinjetester använder samma förenklade byggnadsytor i båda spellägena. Skott använder tredimensionella strålar, spelarens ögonhöjd och byggnadernas/hindrens höjd. Träd och dekor är visuella; terrängen är plan och byggnader kan inte beträdas. AI går direkt mot mål och kan fastna bakom byggnader; navmesh/pathfinding är nästa steg.
+Servern skickar rummets tillstånd till alla deltagare. Servern avgör träffar och progression, men klienter kan läsa fiendepositioner och andra spelares tillstånd. Det finns inget fullständigt anti-cheat eller dolt informationslager. Kollisions- och siktlinjetester använder samma förenklade byggnadsytor i båda spellägena. Skott använder tredimensionella strålar, spelarens ögonhöjd och byggnadernas/hindrens höjd. Träd och dekor är visuella; terrängen är plan och byggnader kan inte beträdas. AI använder A* på ett fyrametersrutnät, testar hela segment mot gångbara ytor och lagrar vägar utanför nätverkssnapshots. Sökningen är begränsad till 2 200 noder och två nya sökningar per rum/tick. Fiender patrullerar och prioriterar en aktuell angripare inom räckvidd. Detta är inte en fullständig navmesh; trånga passager mindre än rutnätet kan saknas.
 
 ## Sparning
 
 Offline sparas versionerat JSON under `avesta-save-v1-<klass>`. Vapenstatistik rekonstrueras från typ/sällsynthet/nivå när sparningen läses; trasiga poster ignoreras. Offlineprofilen är användarägd och kan ändras i webbläsaren, vilket är en anledning till att den aldrig laddas in i multiplayer. Lagerutrymmesfel visas i gränssnittet.
+
+Uppdragskedjan, tillverkade vapen och rustningsnivån ingår i samma offlineformat; äldre version 1-sparningar får tom kampanj och rustning 0. Verkstaden kontrollerar avstånd till Maja, serverbestämda priser, packningskapacitet och maxnivå. Uppdragsbelöningar betalas endast en gång per steg.
 
 Multiplayer är flyktig och har ingen databas. En WebSocket-reconnect skapar en ny karaktär. Publicering av molnmiljön sparar filer och installerade beroenden, inte pågående matcher eller serverprocesser.
 

@@ -547,3 +547,26 @@ body.aiming #crosshair {
 #scene:focus {
   outline: none;
 }
+
+.campaign-hud {
+  border-top: 1px solid #d4c9ab44;
+  margin-top: 16px;
+  padding-top: 14px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.campaign-hud strong {
+  color: #ddc384;
+}
+.workshop-recipes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+#camp-dialog p {
+  line-height: 1.6;
+}
+#camp-message {
+  color: #dfc188;
+  min-height: 1.6em;
+}

@@ -1,4 +1,15 @@
 import {
+  atCamp,
+  armorCost,
+  newCampaign,
+  campaignStatus,
+  trackCampaign,
+  restoreCampaign,
+  CONTRACTS,
+  RECIPES,
+} from './progression.js';
+import { navigate } from './navigation.js';
+import {
   MAP,
   canStand,
   clearShot,
@@ -119,7 +130,7 @@ export function createWorld({ pvp = false, random = Math.random } = {}) {
   ]) {
     const landmark = MAP.places.find((p) => p.id === id);
     const pos = walkableNear(landmark.x + 35, landmark.z + 35);
-    spawnEnemy(w, pos.x, pos.z, 'boss', name, title);
+    spawnEnemy(w, pos.x, pos.z, 'boss', name, title).landmark = id;
   }
   return w;
 }
@@ -169,6 +180,9 @@ export function addPlayer(w, id, name, classId) {
     bosses: 0,
     pickups: 0,
     scrap: 0,
+    armor: 0,
+    crafted: 0,
+    campaign: newCampaign(),
     weapon,
     inventory: [weapon],
     ammo: 24,
@@ -217,7 +231,10 @@ function questCheck(w, p) {
 function hurt(w, target, damage) {
   if (target.hp <= 0 || (target.classId && inSanctuary(target))) return;
   const armor = target.classId === 'stalvakt' && target.buff > 0 ? 0.5 : 1;
-  target.hp = Math.max(0, target.hp - damage * armor);
+  target.hp = Math.max(
+    0,
+    target.hp - damage * armor * (target.classId ? 1 - (target.armor || 0) * 0.08 : 1),
+  );
   if (target.classId && target.hp === 0)
     notice(w, target, 'Du föll för Avesta. Återvänd till samlingsplatsen.');
 }
@@ -225,6 +242,7 @@ function killEnemy(w, e, p) {
   if (e.rewarded) return;
   e.rewarded = true;
   p.kills++;
+  trackCampaign(p, 'kill', e);
   if (e.type === 'boss') p.bosses++;
   rewardXp(w, p, e.type === 'boss' ? 200 : 25);
   const roll = w.random(),
@@ -247,10 +265,13 @@ function killEnemy(w, e, p) {
     type: e.type,
     name: e.name,
     title: e.title,
+    landmark: e.landmark,
   });
   questCheck(w, p);
 }
 function damageEnemy(w, e, damage, p) {
+  e.targetId = p.id;
+  e.alertUntil = w.time + 10;
   hurt(w, e, damage);
   if (e.hp <= 0) killEnemy(w, e, p);
 }
@@ -337,6 +358,41 @@ export function act(w, id, action) {
     return;
   }
   if (p.hp <= 0) return;
+  if (['contract', 'craft', 'armor'].includes(action.type)) {
+    if (!atCamp(p)) return notice(w, p, 'Besök Maja vid samlingsplatsen för uppdrag och verkstad.');
+    if (action.type === 'contract') {
+      const status = campaignStatus(p),
+        contract = CONTRACTS[p.campaign.step];
+      if (status.complete)
+        return notice(w, p, 'Du har fullföljt skiftets alla tre uppdrag. Avesta tackar dig.');
+      if (!p.campaign.active) {
+        p.campaign.active = true;
+        return notice(w, p, `Nytt uppdrag: ${contract.title}.`);
+      }
+      if (!status.ready) return notice(w, p, 'Uppdraget är inte klart ännu.');
+      p.campaign = { ...newCampaign(), step: p.campaign.step + 1 };
+      p.scrap += contract.scrap;
+      rewardXp(w, p, contract.xp);
+      return notice(w, p, `Maja: Tack, dalmas! +${contract.xp} XP och ${contract.scrap} skrot.`);
+    }
+    if (action.type === 'craft') {
+      if (typeof action.kind !== 'string' || !Object.hasOwn(RECIPES, action.kind)) return;
+      const recipe = RECIPES[action.kind];
+      if (p.inventory.length >= 16)
+        return notice(w, p, 'Packningen är full. Skrota ett vapen först.');
+      if (p.scrap < recipe.cost) return notice(w, p, `Du behöver ${recipe.cost} skrot.`);
+      p.scrap -= recipe.cost;
+      p.inventory.push(makeWeapon(`w${w.nextId++}`, action.kind, 1, p.level));
+      p.crafted++;
+      return notice(w, p, `${recipe.name} tillverkad. Ovanlig, nivå ${p.level}.`);
+    }
+    if (p.armor >= 3) return notice(w, p, 'Bruksrustningen är redan fullt förstärkt.');
+    const cost = armorCost(p);
+    if (p.scrap < cost) return notice(w, p, `Du behöver ${cost} skrot.`);
+    p.scrap -= cost;
+    p.armor++;
+    return notice(w, p, `Bruksrustning ${p.armor}/3: ${p.armor * 8}% mindre inkommande skada.`);
+  }
   if (action.type === 'reload' && !p.reload && p.ammo < WEAPONS[p.weapon.kind].mag)
     p.reload = WEAPONS[p.weapon.kind].reload;
   if (action.type === 'ability' && p.abilityCooldown <= 0) {
@@ -430,20 +486,21 @@ export function tick(w, dt) {
         (p.classId === 'skogsvandrare' && p.buff > 0 ? 1.6 : 1) *
         dt,
     );
+    trackCampaign(p, 'visit');
     if (input.fire) shoot(w, p);
   }
+  const pathBudget = { remaining: 2 };
   for (const e of w.enemies) {
     if (e.hp <= 0) continue;
     e.cooldown -= dt;
     const targets = Object.values(w.players)
       .filter((p) => p.hp > 0 && !inSanctuary(p))
       .sort((a, b) => Math.hypot(a.x - e.x, a.z - e.z) - Math.hypot(b.x - e.x, b.z - e.z));
-    const p = targets[0];
-    if (!p) continue;
-    const dx = p.x - e.x,
-      dz = p.z - e.z,
-      dist = Math.hypot(dx, dz),
-      boss = e.type === 'boss';
+    const boss = e.type === 'boss';
+    const aggroRange = boss ? 100 : 75;
+    const candidates = targets.filter((p) => Math.hypot(p.x - e.x, p.z - e.z) < aggroRange);
+    const p =
+      (w.time < e.alertUntil && candidates.find((p) => p.id === e.targetId)) || candidates[0];
     if (e.windup > 0) {
       e.windup -= dt;
       if (e.windup <= 0) {
@@ -454,10 +511,26 @@ export function tick(w, dt) {
       }
       continue;
     }
-    if (dist < (boss ? 100 : 75)) {
+    const chase = p && Math.hypot(e.x - e.homeX, e.z - e.homeZ) < 125;
+    if (chase) {
+      const dist = Math.hypot(p.x - e.x, p.z - e.z);
+      const visible = clearShot(e, p);
       e.phase = 'hunt';
-      if (dist > (boss ? 17 : 14)) move(e, dx / dist, dz / dist, (boss ? 3 : 4.2) * dt);
-      if (dist < (boss ? 25 : 40) && e.cooldown <= 0 && clearShot(e, p)) {
+      e.aim = Math.atan2(p.x - e.x, p.z - e.z);
+      if (dist > (boss ? 17 : 14) || !visible) {
+        const next = navigate(e, p, w.time, pathBudget);
+        if (next) {
+          const length = Math.hypot(next.x - e.x, next.z - e.z);
+          if (length > 0)
+            move(
+              e,
+              (next.x - e.x) / length,
+              (next.z - e.z) / length,
+              Math.min(length, (boss ? 3 : 4.2) * dt),
+            );
+        }
+      }
+      if (dist < (boss ? 25 : 40) && e.cooldown <= 0 && visible) {
         if (boss) {
           e.windup = 1.4;
           e.phase = 'warning';
@@ -477,12 +550,25 @@ export function tick(w, dt) {
           });
         }
       }
-    } else e.phase = 'patrol';
+    } else {
+      const away = Math.hypot(e.x - e.homeX, e.z - e.homeZ) > 22;
+      e.phase = away ? 'return' : 'patrol';
+      const angle = (((Math.floor(w.time / 12) + Number(e.id.slice(1))) % 4) * Math.PI) / 2;
+      let goal = { x: e.homeX + Math.cos(angle) * 10, z: e.homeZ + Math.sin(angle) * 10 };
+      if (away || !canStand(goal.x, goal.z)) goal = { x: e.homeX, z: e.homeZ };
+      const next = navigate(e, goal, w.time, pathBudget);
+      if (next) {
+        const length = Math.hypot(next.x - e.x, next.z - e.z);
+        e.aim = Math.atan2(next.x - e.x, next.z - e.z);
+        if (length > 0)
+          move(e, (next.x - e.x) / length, (next.z - e.z) / length, Math.min(length, 1.8 * dt));
+      }
+    }
   }
   w.enemies = w.enemies.filter((e) => e.hp > 0);
   w.loot = w.loot.filter((l) => l.expires > w.time && w.players[l.owner]);
   for (const r of w.respawns.filter((r) => r.time <= w.time))
-    spawnEnemy(w, r.x, r.z, r.type, r.name, r.title);
+    spawnEnemy(w, r.x, r.z, r.type, r.name, r.title).landmark = r.landmark;
   w.respawns = w.respawns.filter((r) => r.time > w.time);
 }
 export function snapshot(w) {
@@ -508,6 +594,9 @@ export function savePlayer(p) {
     bosses: p.bosses,
     pickups: p.pickups,
     scrap: p.scrap,
+    armor: p.armor,
+    crafted: p.crafted,
+    campaign: { ...p.campaign },
     inventory: p.inventory,
     equipped: p.weapon.id,
     quests: p.quests,
@@ -569,6 +658,9 @@ export function restorePlayer(w, p, save) {
         )
       ];
   }
+  p.armor = Math.max(0, Math.min(3, Math.floor(finite(save.armor))));
+  p.crafted = Math.max(0, Math.min(99999, Math.floor(finite(save.crafted))));
+  p.campaign = restoreCampaign(save.campaign);
   p.quests = Array.isArray(save.quests)
     ? [...new Set(save.quests.filter((q) => ['defend', 'salvage', 'boss'].includes(q)))]
     : [];

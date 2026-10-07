@@ -1,5 +1,7 @@
 name: Publish browser game
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,9 +25,15 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: npm run build
         env:
           VITE_STATIC_HOST: 'true'
           VITE_GAME_SERVER_URL: ${{ vars.VITE_GAME_SERVER_URL }}
+      - run: npx playwright test test/browser/static.spec.js
+        env:
+          EXPECT_STATIC_SOLO: ${{ vars.VITE_GAME_SERVER_URL == '' && '1' || '0' }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

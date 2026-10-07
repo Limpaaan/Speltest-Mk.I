@@ -18,7 +18,7 @@
     <main id="menu">
       <header class="masthead">
         <a class="wordmark" href="/">A<span> / </span>SS</a
-        ><span class="edition">SPELBAR PROTOTYP <b>0.2</b></span
+        ><span class="edition">SPELBAR PROTOTYP <b>0.3</b></span
         ><span class="coordinate">DALARNA, SVERIGE</span>
       </header>
       <section class="intro">
@@ -83,6 +83,10 @@
         <div class="eyebrow">DITT SKIFT</div>
         <h2>Vi lämnar ingen bro.</h2>
         <div id="quest-list"></div>
+        <div class="campaign-hud">
+          <strong id="campaign-title"></strong>
+          <p id="campaign-progress"></p>
+        </div>
         <p id="zone"></p>
       </aside>
       <div id="notification" role="status"></div>
@@ -133,6 +137,27 @@
       <p class="muted">
         Skrota oanvända vapen. Tryck H i spelet för att använda 15 skrot och återfå 50 hälsa.
       </p>
+    </dialog>
+    <dialog id="camp-dialog">
+      <div class="dialog-heading">
+        <div>
+          <div class="eyebrow">SAMLINGSPLATSEN / AVESTA</div>
+          <h2>Majas skiftbod</h2>
+        </div>
+        <button class="close-dialog small-button">STÄNG ×</button>
+      </div>
+      <p class="muted">
+        ”Vi lämnar ingen bakom oss. Hämta ditt nästa uppdrag eller använd skrotet i verkstaden.”
+      </p>
+      <h3 id="contract-title"></h3>
+      <p id="contract-story"></p>
+      <p id="contract-progress"></p>
+      <button id="contract-action" class="primary">TA UPPDRAGET</button>
+      <h3>Verkstad</h3>
+      <p id="workshop-stats"></p>
+      <div id="workshop-recipes" class="workshop-recipes"></div>
+      <button id="upgrade-armor" class="secondary"></button>
+      <p id="camp-message" role="status"></p>
     </dialog>
     <dialog id="pause-dialog">
       <button id="admin-open" hidden>FUSKMENY · F2</button>
