@@ -477,3 +477,35 @@ dialog h2 {
 #map-attribution:hover {
   text-decoration: underline;
 }
+
+#admin-dialog {
+  width: min(620px, 92vw);
+  max-height: 90vh;
+  overflow: auto;
+}
+#admin-dialog label {
+  display: block;
+  margin: 12px 0;
+  font-size: 12px;
+}
+#admin-dialog input,
+#admin-dialog select {
+  width: 100%;
+  padding: 9px;
+  background: #182d26;
+  color: #eee7d4;
+  border: 1px solid #697267;
+}
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+#admin-dialog form {
+  border-top: 1px solid #536557;
+  margin-top: 18px;
+  padding-top: 10px;
+}
+[aria-invalid='true'] {
+  outline: 2px solid #c87564;
+}

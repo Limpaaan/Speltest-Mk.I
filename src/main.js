@@ -1,3 +1,4 @@
+import { validateUsername, isAdmin, adminAction } from '../shared/admin.js';
 import './style.css';
 import { WorldView, drawMap } from './view.js';
 import { MAP, inArena, inSanctuary } from '../shared/map.js';
@@ -37,7 +38,19 @@ let mouse = { x: innerWidth / 2, y: innerHeight / 2, down: false },
   keys = new Set(),
   expanded = false,
   storageWarning = false;
-const dialogs = [$('inventory-dialog'), $('pause-dialog'), $('death-dialog')];
+const dialogs = [$('inventory-dialog'), $('pause-dialog'), $('death-dialog'), $('admin-dialog')];
+let adminRefresh = false,
+  adminSignature = '';
+function chosenName() {
+  const result = validateUsername($('player-name').value);
+  $('player-name').setAttribute('aria-invalid', String(!result.ok));
+  if (!result.ok) {
+    status(result.error);
+    $('player-name').focus();
+    return null;
+  }
+  return result.name;
+}
 const paused = () => dialogs.some((d) => d.open);
 function resetInput() {
   keys.clear();
@@ -130,6 +143,8 @@ function leave(message) {
   status(message || 'Skiftet är avslutat. Offlineframsteg sparas per klass på den här enheten.');
 }
 $('play-offline').onclick = () => {
+  const name = chosenName();
+  if (!name) return;
   const pending = socket;
   socket = null;
   pending?.close();
@@ -137,12 +152,14 @@ $('play-offline').onclick = () => {
   mode = 'offline';
   world = createWorld();
   myId = 'local';
-  addPlayer(world, myId, $('player-name').value, selected);
+  addPlayer(world, myId, name, selected);
   loadSave();
   state = snapshot(world);
   enter();
 };
 $('play-online').onclick = () => {
+  const name = chosenName();
+  if (!name) return;
   const room = $('room-code').value.trim().toUpperCase();
   if (!/^[A-Z0-9-]{1,16}$/.test(room))
     return status('Ange en rumskod med 1–16 bokstäver, siffror eller bindestreck.');
@@ -160,10 +177,7 @@ $('play-online').onclick = () => {
       status('Servern svarade inte. Starta spelservern eller välj offline.');
     }
   }, 8000);
-  ws.onopen = () =>
-    ws.send(
-      JSON.stringify({ type: 'join', room, name: $('player-name').value, classId: selected }),
-    );
+  ws.onopen = () => ws.send(JSON.stringify({ type: 'join', room, name, classId: selected }));
   ws.onmessage = (event) => {
     if (socket !== ws) return;
     let msg;
@@ -179,8 +193,16 @@ $('play-online').onclick = () => {
       myId = msg.id;
       roomName = msg.room;
       enter();
-    } else if (msg.type === 'state') state = msg.state;
-    else if (msg.type === 'error') {
+    } else if (msg.type === 'state') {
+      state = msg.state;
+      if (adminRefresh) {
+        adminRefresh = false;
+        renderAdmin(true);
+      }
+    } else if (msg.type === 'admin_result') {
+      $('admin-status').textContent = msg.message;
+      adminRefresh = msg.ok;
+    } else if (msg.type === 'error') {
       clearTimeout(timeout);
       leave(msg.message);
     }
@@ -209,6 +231,7 @@ function openDialog(dialog) {
   resetInput();
   dialog.showModal();
   if (dialog === $('inventory-dialog')) renderInventory();
+  if (dialog === $('admin-dialog')) renderAdmin(true);
 }
 function pause() {
   if (!mode) return;
@@ -256,7 +279,7 @@ for (const b of document.querySelectorAll('.close-dialog'))
 $('death-dialog').addEventListener('cancel', (e) => e.preventDefault());
 for (const d of dialogs) d.addEventListener('close', resetInput);
 window.addEventListener('keydown', (e) => {
-  if (!mode || ['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+  if (!mode || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
   const k = e.key.toLowerCase();
   if (
     [
@@ -278,6 +301,14 @@ window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   if (k === 'escape') {
     pause();
+    return;
+  }
+  if (k === 'f2') {
+    e.preventDefault();
+    if (isAdmin(state.players[myId])) {
+      if ($('admin-dialog').open) $('admin-dialog').close();
+      else openDialog($('admin-dialog'));
+    }
     return;
   }
   if (k === 'i') {
@@ -374,6 +405,8 @@ function updateHUD() {
     mode === 'offline'
       ? 'OFFLINE / ENSAM PÅ SKIFTET'
       : `RUM ${roomName} / ${Object.keys(state.players).length} AV 8 SPELARE`;
+  $('admin-open').hidden = !isAdmin(p);
+  if ($('admin-dialog').open) renderAdmin();
   $('player-class').textContent = c.name.toUpperCase();
   $('level').textContent = `NIVÅ ${p.level}`;
   $('health-fill').style.width = `${(p.hp / maxHp(p)) * 100}%`;
@@ -497,3 +530,62 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator)
       if (!mode)
         status('Solo fungerar utan spelserver. Full offlineladdning kräver HTTPS eller localhost.');
     });
+
+function renderAdmin(refresh = false) {
+  if (!isAdmin(state.players[myId])) return;
+  const players = Object.values(state.players),
+    signature = JSON.stringify(players.map((p) => [p.id, p.name]));
+  if (signature !== adminSignature) {
+    adminSignature = signature;
+    const previous = $('admin-target').value;
+    $('admin-target').replaceChildren();
+    for (const p of players) {
+      const option = document.createElement('option');
+      option.value = p.id;
+      option.textContent = p.name + (p.id === myId ? ' (du)' : '');
+      $('admin-target').append(option);
+    }
+    $('admin-target').value = state.players[previous] ? previous : myId;
+    refresh = true;
+  }
+  const target = state.players[$('admin-target').value];
+  if (refresh && target) {
+    for (const key of ['level', 'xp', 'hp', 'scrap', 'power', 'vitality', 'points'])
+      $(`admin-${key}`).value = Math.floor(target[key]);
+    $('admin-item-level').value = target.level;
+  }
+}
+function sendAdmin(command) {
+  if (!isAdmin(state.players[myId])) return;
+  if (mode === 'offline') {
+    const result = adminAction(world, myId, command);
+    state = snapshot(world);
+    $('admin-status').textContent = result.message;
+    if (result.ok) {
+      persist();
+      renderAdmin(true);
+      updateHUD();
+    }
+  } else if (socket?.readyState === WebSocket.OPEN)
+    socket.send(JSON.stringify({ type: 'admin', action: command }));
+}
+$('admin-open').onclick = () => openDialog($('admin-dialog'));
+$('admin-target').onchange = () => renderAdmin(true);
+$('admin-item-form').onsubmit = (e) => {
+  e.preventDefault();
+  sendAdmin({
+    type: 'spawn_item',
+    targetId: $('admin-target').value,
+    kind: $('admin-item-kind').value,
+    rarity: Number($('admin-item-rarity').value),
+    level: Number($('admin-item-level').value),
+  });
+};
+$('admin-stats-form').onsubmit = (e) => {
+  e.preventDefault();
+  const stats = {};
+  for (const key of ['level', 'xp', 'hp', 'scrap', 'power', 'vitality', 'points'])
+    stats[key] = Number($(`admin-${key}`).value);
+  sendAdmin({ type: 'set_stats', targetId: $('admin-target').value, stats });
+};
+$('admin-heal').onclick = () => sendAdmin({ type: 'heal', targetId: $('admin-target').value });

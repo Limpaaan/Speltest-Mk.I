@@ -104,3 +104,13 @@ Prototypen saknar konton, åtkomstkontroll, databas, återanslutningsbiljetter, 
 ## Rättigheter
 
 Ingen licens för projektets egen kod eller konst har valts åt ägaren. Tills ägaren väljer en licens gäller sedvanlig upphovsrätt; publicering på GitHub är inte i sig en öppen källkodslicens. Beroenden behåller sina respektive licenser. Inga verkliga företagslogotyper eller tredjepartsmodeller har lagts in. Kartdatabasen bygger på © OpenStreetMap contributors och distribueras separat under ODbL 1.0. Attribuering visas i spelet; källutdrag och bearbetad kartdatabas finns både i repot och i produktionsbygget. Se `docs/MAP.md` och `data/README.md`.
+
+## AdminL och användarnamn
+
+Välj ett användarnamn före start. Namnet måste innehålla 2–24 bokstäver, siffror,
+mellanslag, bindestreck eller understreck och vara unikt i multiplayer-rummet.
+Exakt `AdminL` ger avsiktligt tillgång till fuskmenyn med **F2** eller via pausmenyn.
+Välj en spelare och skapa vapen, ändra nivå/XP/hälsa/skrot/talanger eller återuppliva.
+Offlineändringar sparas lokalt; multiplayerändringar görs av servern och gäller
+sessionen. Alla som väljer AdminL får åtkomst; namnregeln är ett testverktyg, inte
+autentisering. Vanliga spelare kan inte förfalska en annan sockets behörighet.

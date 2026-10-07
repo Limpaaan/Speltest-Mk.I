@@ -1,3 +1,4 @@
+import { adminAction, validateUsername } from '../shared/admin.js';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -113,24 +114,34 @@ export function createGameServer({
             type: 'error',
             message: 'Rumskoden måste ha 1–16 bokstäver, siffror eller bindestreck.',
           });
+        const username = validateUsername(msg.name);
+        if (!username.ok) return send(ws, { type: 'error', message: username.error });
         if (!rooms.has(code)) {
           if (rooms.size >= maxRooms)
             return send(ws, { type: 'error', message: 'Servern är full.' });
           rooms.set(code, { world: createWorld({ pvp: true }), clients: new Map() });
         }
         const target = rooms.get(code);
+        if (
+          Object.values(target.world.players).some(
+            (p) => p.name.toLocaleLowerCase('sv') === username.name.toLocaleLowerCase('sv'),
+          )
+        )
+          return send(ws, { type: 'error', message: 'Namnet används redan i rummet.' });
         if (target.clients.size >= 8)
           return send(ws, { type: 'error', message: 'Rummet är fullt (8 spelare).' });
         room = target;
         playerId = randomUUID();
         room.clients.set(ws, playerId);
-        addPlayer(room.world, playerId, msg.name, msg.classId);
+        addPlayer(room.world, playerId, username.name, msg.classId);
         clearTimeout(joinDeadline);
         send(ws, { type: 'welcome', id: playerId, room: code, state: snapshot(room.world) });
       } else if (room && msg.type === 'input') {
         room.world.players[playerId].input = cleanInput(msg.input);
         lastInput = now;
       } else if (room && msg.type === 'action') act(room.world, playerId, msg.action);
+      else if (room && msg.type === 'admin')
+        send(ws, { type: 'admin_result', ...adminAction(room.world, playerId, msg.action) });
     });
     ws.staleInput = () => {
       if (room && Date.now() - lastInput > 500) room.world.players[playerId].input = cleanInput();

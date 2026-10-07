@@ -27,14 +27,15 @@ function message(ws, type) {
     ws.on('message', handle);
   });
 }
-async function join(url, room = 'AVESTA') {
+let userSequence = 0;
+async function join(url, room = 'AVESTA', name = `Tester ${++userSequence}`) {
   const ws = new WebSocket(url);
   await new Promise((resolve, reject) => {
     ws.once('open', resolve);
     ws.once('error', reject);
   });
   const ready = message(ws, 'welcome');
-  ws.send(JSON.stringify({ type: 'join', room, name: 'Tester', classId: 'stalvakt' }));
+  ws.send(JSON.stringify({ type: 'join', room, name, classId: 'stalvakt' }));
   const welcome = await ready;
   return { ws, ...welcome };
 }
@@ -100,7 +101,7 @@ test('room capacity is eight players', async (t) => {
   const ws = new WebSocket(url);
   await new Promise((r) => ws.once('open', r));
   const error = message(ws, 'error');
-  ws.send(JSON.stringify({ type: 'join', room: 'AVESTA' }));
+  ws.send(JSON.stringify({ type: 'join', room: 'AVESTA', name: 'Nionde' }));
   assert.match((await error).message, /fullt/);
   ws.close();
 });
@@ -113,4 +114,37 @@ test('malformed input shapes cannot crash a live session', async (t) => {
   const result = await message(a.ws, 'state');
   assert.equal(result.state.players[a.id].hp, 160);
   assert.equal(result.state.players[a.id].x, MAP.spawn.x);
+});
+
+test('AdminL modifies a selected player while ordinary sockets cannot forge admin access', async (t) => {
+  const { url } = await server(t);
+  const a = await join(url, 'ADMIN', 'AdminL'),
+    b = await join(url, 'ADMIN', 'Brovakten');
+  let result = message(b.ws, 'admin_result');
+  b.ws.send(
+    JSON.stringify({
+      type: 'admin',
+      admin: true,
+      actorId: a.id,
+      action: { type: 'set_stats', targetId: b.id, stats: { level: 30 } },
+    }),
+  );
+  assert.equal((await result).ok, false);
+  result = message(a.ws, 'admin_result');
+  a.ws.send(
+    JSON.stringify({
+      type: 'admin',
+      action: { type: 'set_stats', targetId: b.id, stats: { level: 5, scrap: 500 } },
+    }),
+  );
+  assert.equal((await result).ok, true);
+  const state = (await message(b.ws, 'state')).state;
+  assert.equal(state.players[b.id].level, 5);
+  assert.equal(state.players[a.id].level, 1);
+  const duplicate = new WebSocket(url);
+  await new Promise((r) => duplicate.once('open', r));
+  const rejected = message(duplicate, 'error');
+  duplicate.send(JSON.stringify({ type: 'join', room: 'ADMIN', name: 'ADMINL' }));
+  assert.match((await rejected).message, /redan/);
+  duplicate.close();
 });

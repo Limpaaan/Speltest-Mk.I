@@ -8,6 +8,7 @@ test('offline play, combat controls, inventory, save and pause work without erro
   await expect(page.locator('h1')).toContainText('SKIFTET');
   await page.screenshot({ path: '.local/menu.png' });
   await page.getByRole('button', { name: 'Kopparslagare' }).click();
+  await page.locator('#player-name').fill('Dalkulla');
   await page.locator('#play-offline').click();
   await expect(page.locator('#hud')).toBeVisible();
   await expect(page.locator('#player-class')).toHaveText('KOPPARSLAGARE');
@@ -42,6 +43,7 @@ test('offline play, combat controls, inventory, save and pause work without erro
   expect(save.inventory).toHaveLength(1);
   await page.reload();
   await page.getByRole('button', { name: 'Kopparslagare' }).click();
+  await page.locator('#player-name').fill('Dalkulla');
   await page.locator('#play-offline').click();
   await expect(page.locator('#player-class')).toHaveText('KOPPARSLAGARE');
   expect(errors).toEqual([]);
@@ -52,8 +54,12 @@ test('two browser clients join the same room and see the shared player count', a
   const context = await browser.newContext();
   const a = await context.newPage(),
     b = await context.newPage();
-  for (const page of [a, b]) {
+  for (const [page, name] of [
+    [a, 'Förste'],
+    [b, 'Andre'],
+  ]) {
     await page.goto('/');
+    await page.locator('#player-name').fill(name);
     await page.locator('#room-code').fill('BROWSER');
     await page.locator('#play-online').click();
   }
@@ -80,8 +86,30 @@ test('production client reloads and plays with network disabled after caching', 
   });
   await context.setOffline(true);
   await page.reload();
+  await page.locator('#player-name').fill('Dalkulla');
   await page.locator('#play-offline').click();
   await expect(page.locator('#session')).toContainText('OFFLINE');
   await page.keyboard.press('q');
   await expect(page.locator('#ability-cooldown')).not.toHaveText('REDO');
+});
+
+test('mandatory username and AdminL tools create loot and edit level offline', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#play-offline').click();
+  await expect(page.locator('#player-name')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.locator('#menu')).toBeVisible();
+  await page.locator('#player-name').fill('AdminL');
+  await page.locator('#play-offline').click();
+  await page.keyboard.press('F2');
+  await expect(page.locator('#admin-dialog')).toBeVisible();
+  await page.locator('#admin-level').fill('10');
+  await page.locator('#admin-stats-form button').click();
+  await expect(page.locator('#level')).toHaveText('NIVÅ 10');
+  await page.locator('#admin-item-kind').selectOption('scout');
+  await page.locator('#admin-item-rarity').selectOption('3');
+  await page.locator('#admin-item-form button').click();
+  await expect(page.locator('#admin-status')).toContainText('Legendarisk');
+  await page.locator('#admin-dialog .close-dialog').click();
+  await page.keyboard.press('i');
+  await expect(page.locator('#inventory-items')).toContainText('Dalälvens öga');
 });

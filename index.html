@@ -44,7 +44,7 @@
               maxlength="24"
               placeholder="Dalmas"
               autocomplete="off"
-              value="Dalmas" /></label
+              value="" /></label
           ><label
             >RUMSKOD <span>(MULTIPLAYER)</span
             ><input
@@ -130,6 +130,7 @@
       </p>
     </dialog>
     <dialog id="pause-dialog">
+      <button id="admin-open" hidden>FUSKMENY · F2</button>
       <div class="eyebrow">EN STUND VID ÄLVEN</div>
       <h2>Skiftet väntar.</h2>
       <p id="pause-info"></p>
@@ -139,6 +140,58 @@
       <p class="muted">
         PvP kräver att båda spelarna har aktiverat det och befinner sig i Skogsbos markerade arena.
       </p>
+    </dialog>
+    <dialog id="admin-dialog">
+      <button class="close-dialog" aria-label="Stäng fuskmenyn">STÄNG</button>
+      <p class="eyebrow">UTVECKLARVERKTYG / ADMINL</p>
+      <h2>Forma skiftet.</h2>
+      <label
+        >Spelare
+        <select id="admin-target"></select
+      ></label>
+      <form id="admin-item-form">
+        <h3>Skapa föremål</h3>
+        <label
+          >Vapen
+          <select id="admin-item-kind">
+            <option value="rifle">Bruksbössan</option>
+            <option value="shotgun">Slaggkastaren</option>
+            <option value="scout">Dalälvens öga</option>
+          </select></label
+        >
+        <label
+          >Sällsynthet
+          <select id="admin-item-rarity">
+            <option value="0">Vanlig</option>
+            <option value="1">Ovanlig</option>
+            <option value="2">Sällsynt</option>
+            <option value="3">Legendarisk</option>
+          </select></label
+        >
+        <label
+          >Föremålsnivå
+          <input id="admin-item-level" type="number" min="1" max="30" value="1" required
+        /></label>
+        <button type="submit">SKAPA I SPELARENS PACKNING</button>
+      </form>
+      <form id="admin-stats-form">
+        <h3>Spelarstatistik</h3>
+        <div class="admin-grid">
+          <label>Nivå<input id="admin-level" type="number" min="1" max="30" required /></label
+          ><label>XP<input id="admin-xp" type="number" min="0" max="3000" required /></label
+          ><label>Hälsa<input id="admin-hp" type="number" min="0" max="1000" required /></label
+          ><label>Skrot<input id="admin-scrap" type="number" min="0" max="99999" required /></label
+          ><label>Eldkraft<input id="admin-power" type="number" min="0" max="29" required /></label
+          ><label
+            >Livskraft<input id="admin-vitality" type="number" min="0" max="29" required /></label
+          ><label
+            >Talangpoäng<input id="admin-points" type="number" min="0" max="29" required
+          /></label>
+        </div>
+        <button type="submit">TILLÄMPA STATISTIK</button>
+      </form>
+      <button id="admin-heal">FULL HÄLSA / ÅTERUPPLIVA</button>
+      <p id="admin-status" role="status"></p>
     </dialog>
     <dialog id="death-dialog">
       <div class="eyebrow">DET ÄR INTE ÖVER</div>
