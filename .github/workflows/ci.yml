@@ -21,6 +21,9 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Match Render's environment so test fixtures cannot accidentally inherit it.
+    env:
+      ALLOWED_ORIGIN: https://limpaaan.github.io
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -25,7 +25,11 @@ export default defineConfig({
   },
   webServer: {
     command: 'npm run start',
-    env: { PORT: '4173', HOST: '127.0.0.1' },
+    env: {
+      PORT: '4173',
+      HOST: '127.0.0.1',
+      ALLOWED_ORIGIN: 'http://127.0.0.1:4173',
+    },
     url: 'http://127.0.0.1:4173/health',
     reuseExistingServer: false,
   },

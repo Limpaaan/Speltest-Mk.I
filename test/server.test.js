@@ -4,7 +4,9 @@ import { WebSocket } from 'ws';
 import { MAP } from '../shared/map.js';
 import { createGameServer } from '../server/index.js';
 async function server(t, options = {}) {
-  const app = createGameServer(options);
+  // Local fixtures must not inherit the deployment host's ALLOWED_ORIGIN.
+  // Individual origin-policy tests can still supply their own explicit setting.
+  const app = createGameServer({ allowedOrigin: null, ...options });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
   t.after(() => app.close());
   const port = app.server.address().port;
