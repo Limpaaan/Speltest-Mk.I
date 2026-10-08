@@ -18,8 +18,9 @@
     <main id="menu">
       <header class="masthead">
         <a class="wordmark" href="/">A<span> / </span>SS</a
-        ><span class="edition">SPELBAR PROTOTYP <b>0.3</b></span
-        ><span class="coordinate">DALARNA, SVERIGE</span>
+        ><span class="edition">SPELBAR PROTOTYP <b>0.4</b></span
+        ><span class="coordinate">DALARNA, SVERIGE</span
+        ><button id="settings-menu" class="small-button">INSTÄLLNINGAR</button>
       </header>
       <section class="intro">
         <div class="eyebrow"><span class="live-dot"></span> AVESTA STÅR KVAR</div>
@@ -34,7 +35,7 @@
         </div>
       </section>
       <section class="deployment" aria-label="Välj klass och spelläge">
-        <div class="section-label"><span>01 / VÄLJ DITT ARV</span><span>FYRA KLASSER</span></div>
+        <div class="section-label"><span>01 / VÄLJ DITT ARV</span><span>SEX KLASSER</span></div>
         <div id="classes" class="classes"></div>
         <p id="class-detail" class="class-detail"></p>
         <div class="identity">
@@ -91,6 +92,7 @@
       </aside>
       <div id="notification" role="status"></div>
       <div id="interact"></div>
+      <div id="scope-overlay" aria-hidden="true"><div class="scope-reticle"></div></div>
       <div id="crosshair">+</div>
       <div class="player-panel">
         <div class="player-heading">
@@ -107,6 +109,7 @@
       <div class="weapon-panel">
         <span id="weapon-rarity"></span>
         <h2 id="weapon-name"></h2>
+        <span id="grenade-count"></span>
         <div class="ammo"><strong id="ammo"></strong><span id="ammo-max"></span></div>
         <button id="inventory-button" class="small-button">PACKNING <kbd>I</kbd></button>
       </div>
@@ -117,7 +120,7 @@
       <div class="controls">
         <span><kbd>WASD</kbd> FÖRFLYTTA</span><span><kbd>MUS</kbd> SIKTA & SKJUT</span
         ><span><kbd>R</kbd> LADDA</span><span><kbd>E</kbd> BÄRGA</span
-        ><span><kbd>H</kbd> LÄK / 15 SKROT</span>
+        ><span><kbd>H</kbd> LÄK / 15 SKROT</span><span><kbd>G</kbd> GRANAT</span>
       </div>
     </section>
     <dialog id="inventory-dialog">
@@ -164,6 +167,7 @@
       <div class="eyebrow">EN STUND VID ÄLVEN</div>
       <h2>Skiftet väntar.</h2>
       <p id="pause-info"></p>
+      <button id="settings-pause" class="secondary">SPELINSTÄLLNINGAR</button>
       <button id="resume" class="primary">TILLBAKA TILL AVESTA →</button
       ><button id="pvp-toggle" class="secondary">AKTIVERA PVP I SKOGSBO</button
       ><button id="leave" class="secondary">SPARA & LÄMNA SKIFTET</button>
@@ -223,6 +227,59 @@
       <button id="admin-heal">FULL HÄLSA / ÅTERUPPLIVA</button>
       <p id="admin-status" role="status"></p>
     </dialog>
+    <dialog id="npc-dialog">
+      <button class="close-dialog" aria-label="Stäng">×</button>
+      <div class="eyebrow">AVESTAS MOTSTÅND</div>
+      <h2 id="npc-name"></h2>
+      <p id="npc-text"></p>
+      <button id="npc-service" class="primary"></button>
+      <p id="npc-message" role="status"></p>
+    </dialog>
+    <dialog id="settings-dialog">
+      <div class="dialog-heading">
+        <h2>Spelinställningar</h2>
+        <button class="close-dialog small-button">STÄNG ×</button>
+      </div>
+      <div class="settings-grid">
+        <label
+          >Muskänslighet <output id="sensitivity-value"></output
+          ><input id="setting-sensitivity" type="range" min="0.2" max="3" step="0.05"
+        /></label>
+        <label
+          >Känslighet i sikte <output id="adsSensitivity-value"></output
+          ><input id="setting-adsSensitivity" type="range" min="0.2" max="1.5" step="0.05"
+        /></label>
+        <label
+          >Synfält <output id="fov-value"></output
+          ><input id="setting-fov" type="range" min="60" max="100" step="1"
+        /></label>
+        <label
+          >Hårkors<select id="setting-crosshair">
+            <option value="cross">Kors</option>
+            <option value="dot">Punkt</option>
+            <option value="circle">Ring</option>
+            <option value="none">Av</option>
+          </select></label
+        >
+        <label>Hårkorsets färg<input id="setting-crosshairColor" type="color" /></label>
+        <label
+          >Hårkorsets storlek <output id="crosshairSize-value"></output
+          ><input id="setting-crosshairSize" type="range" min="12" max="32" step="1"
+        /></label>
+        <label
+          >Grafik<select id="setting-graphics">
+            <option value="low">Låg</option>
+            <option value="medium">Medel</option>
+            <option value="high">Hög</option>
+          </select></label
+        >
+        <label
+          ><input id="setting-weaponBob" type="checkbox" /> Vapenrörelse vid förflyttning</label
+        >
+      </div>
+      <button id="settings-reset" class="secondary">ÅTERSTÄLL STANDARD</button>
+      <p id="settings-status" role="status">Ändringar sparas automatiskt på den här enheten.</p>
+    </dialog>
     <dialog id="death-dialog">
       <div class="eyebrow">DET ÄR INTE ÖVER</div>
       <h2>Res dig, dalmas.</h2>
@@ -237,5 +294,8 @@
       >© OpenStreetMap contributors · ODbL</a
     >
     <script type="module" src="/src/main.js"></script>
+    <a id="terrain-attribution" href="./terrain-notice.txt" target="_blank" rel="noopener"
+      >Copernicus WorldDEM-30 · höjddata och licens</a
+    >
   </body>
 </html>

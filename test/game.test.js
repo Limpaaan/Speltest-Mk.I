@@ -12,8 +12,10 @@ import {
   savePlayer,
   restorePlayer,
   makeWeapon,
+  WEAPONS,
+  CLASSES,
 } from '../shared/game.js';
-import { MAP, canStand, waterAt, onBridge } from '../shared/map.js';
+import { MAP, canStand, waterAt, onBridge, groundHeight, eyeHeight } from '../shared/map.js';
 function setup(classId = 'stalvakt', pvp = false) {
   const w = createWorld({ pvp, random: () => 0.99 });
   w.enemies = [];
@@ -21,6 +23,16 @@ function setup(classId = 'stalvakt', pvp = false) {
   p.x = -480;
   p.z = 480;
   return { w, p };
+}
+function aimAt(p, e) {
+  return {
+    aim: Math.atan2(e.x - p.x, e.z - p.z),
+    pitch: Math.atan2(
+      groundHeight(e.x, e.z) + eyeHeight(e) - groundHeight(p.x, p.z) - eyeHeight(p),
+      Math.hypot(e.x - p.x, e.z - p.z),
+    ),
+    fire: true,
+  };
 }
 function advance(w, seconds) {
   for (let i = 0; i < Math.round(seconds / 0.05); i++) tick(w, 0.05);
@@ -56,7 +68,7 @@ test('buildings and real river geometry block walking while a mapped bridge is t
   p.z = a[1];
   const distance = Math.hypot(b[0] - a[0], b[1] - a[1]);
   p.input = cleanInput({ x: (b[0] - a[0]) / distance, z: (b[1] - a[1]) / distance });
-  advance(w, distance / 7);
+  for (let i = 0; i < 2000 && Math.hypot(p.x - b[0], p.z - b[1]) > 1; i++) tick(w, 0.05);
   assert.ok(Math.hypot(p.x - b[0], p.z - b[1]) < 3);
 });
 
@@ -64,7 +76,7 @@ test('combat rewards personal loot, XP and progresses quests', () => {
   const { w, p } = setup();
   for (let n = 0; n < 5; n++) {
     const e = spawnEnemy(w, p.x, p.z + 10);
-    p.input = cleanInput({ aim: 0, fire: true });
+    p.input = cleanInput(aimAt(p, e));
     advance(w, 1.2);
     assert.equal(e.hp, 0);
     p.input = cleanInput();
@@ -86,8 +98,8 @@ test('ammo, reload, switching and abilities cannot bypass cooldowns', () => {
   assert.equal(p.ammo, 0);
   assert.ok(p.reload > 0);
   p.input = cleanInput();
-  advance(w, 1.5);
-  assert.equal(p.ammo, 24);
+  advance(w, WEAPONS[p.weapon.kind].reload);
+  assert.equal(p.ammo, WEAPONS[p.weapon.kind].mag);
   act(w, p.id, { type: 'ability' });
   assert.equal(p.abilityCooldown, 18);
   advance(w, 1);
@@ -238,7 +250,7 @@ test('enemy respawns and loot expiration are bounded by simulation time', () => 
   const { w, p } = setup();
   const e = spawnEnemy(w, p.x, p.z + 10);
   e.hp = 1;
-  p.input = cleanInput({ aim: 0, fire: true });
+  p.input = cleanInput(aimAt(p, e));
   advance(w, 0.1);
   p.input = cleanInput();
   assert.equal(w.enemies.length, 0);
@@ -291,10 +303,10 @@ test('untrusted input shapes and inherited class or weapon names are harmless', 
 
 test('FPS pitch misses above and below the body, while headshots deal extra damage', () => {
   const { w, p } = setup();
-  p.x = 70;
-  p.z = 180;
+  p.x = -480;
+  p.z = 480;
   w.enemies = [];
-  const e = spawnEnemy(w, 70, 200);
+  const e = spawnEnemy(w, p.x, p.z + 10);
   e.cooldown = 999;
   p.input = { fire: true, aim: 0, pitch: 1.4 };
   tick(w, 0.05);
@@ -303,22 +315,23 @@ test('FPS pitch misses above and below the body, while headshots deal extra dama
   p.input.pitch = -1;
   tick(w, 0.05);
   assert.equal(e.hp, 70);
-  assert.ok(w.shots.at(-1).endY < 0.001);
+  const shot = w.shots.at(-1);
+  assert.ok(Math.abs(shot.endY - groundHeight(shot.endX, shot.endZ)) < 0.01);
   p.cooldown = 0;
-  p.input.pitch = 0;
+  p.input = aimAt(p, e);
   tick(w, 0.05);
   assert.equal(e.hp, 70 - 19 * 1.5);
   assert.equal(w.shots.at(-1).headshot, true);
 });
 test('sprint consumes stamina and crouch/ADS prevent sprinting', () => {
   const { w, p } = setup();
-  p.x = 70;
-  p.z = 180;
+  p.x = -480;
+  p.z = 480;
   w.enemies = [];
   p.input = { z: 1, sprint: true };
   advance(w, 1);
   assert.ok(p.stamina < 100);
-  assert.ok(p.z > 190);
+  assert.ok(p.z > 481 && p.z < 485, 'slower but functioning sprint');
   p.input = { z: 1, sprint: true, crouch: true };
   const z = p.z;
   advance(w, 1);

@@ -2,11 +2,11 @@
 
 Vägsträckningar, registrerade vägbroar, vattenytor och älvlinjer kommer från **OpenStreetMap**, hämtat **2026-10-06** via Overpass API. Spelet innehåller 2 890 vägsegment, 127 älvsegment och tio vattenpolygoner. Exporten och den bearbetade databasen finns i repot; kartan kräver inga externa anrop när man spelar.
 
-Kartans geografiska avstånd är komprimerade **1:4**. Riktningar och relativa lägen för källbelagda punkter behålls i en lokal projektion, men terränghöjder saknas. Vägbredder, vissa vattenbredder, byggnadsstorlekar och 3D-utseenden är spelmässiga approximationer. Detta är inte en lantmäterimätning eller en fullständig digital tvilling av Avesta. Visade vapenavstånd gäller spelenheter.
+Kartans geografiska avstånd är komprimerade **1:4**. Riktningar och relativa lägen för källbelagda punkter behålls i en lokal projektion, och höjder kommer från Copernicus GLO-30 DSM. Vägbredder, vissa vattenbredder, byggnadsstorlekar och 3D-utseenden är spelmässiga approximationer. Detta är inte en lantmäterimätning eller en fullständig digital tvilling av Avesta. Visade vapenavstånd gäller spelenheter.
 
 Se [höjdimportens status](TERRAIN.md) och [granskade bildreferenser](VISUAL-REFERENCES.md).
 Version 0.2 har texturerade fasader och en ombyggd Dalahäst; Street View-granskning
-och integration av verkliga höjder återstår.
+återstår. Version 0.4 integrerar höjder, 180 tolkade omgivningshus samt 950 träd och 90 stenblock med kollision. Vegetationen är procedurgenererad; enskilda träd och huslägen är inte uppmätta.
 
 ## Landmärken
 
@@ -20,6 +20,17 @@ och integration av verkliga höjder återstår.
 | Skogsbo     | OSM node/1896051103 · 60.1594034, 16.1838947 | Områdespunkt; spelbyggnaden är en symbol                                  |
 | ~ Plushuset | Spelmässig platshållare                      | Saknades i OSM-namnfrågan; behöver separat verifiering                    |
 | ~ Åsbo      | Spelmässig platshållare                      | Områdets avsedda spelcentrum behöver separat verifiering                  |
+
+Ytterligare källbelagda kartpunkter i 0.4:
+
+| Plats                    | OSM-ID          | Utförande                                  |
+| ------------------------ | --------------- | ------------------------------------------ |
+| Skogsbo skola            | way/165548511   | Tolkad skolbyggnad vid OSM-centrum         |
+| Skogsbo skola idrottssal | way/165548549   | Tolkad hall vid OSM-centrum                |
+| Skogsbo Skola Matsal     | way/1019516058  | Tolkad byggnad vid OSM-centrum             |
+| Åsbobacken               | node/2665372581 | Skyltad kartpunkt i den uppmätta terrängen |
+
+Dessa finns i det ursprungliga kartutdraget. Inga nya fasadfotografier har kunnat hämtas: Google Maps och Avesta kommun nekades av nätverksproxyn den 8 oktober 2026. Skolmodellerna ska inte förväxlas med verifierade exteriörer.
 
 `~` visas både i 3D-vyn och på översiktskartan för de två ungefärliga platserna. Endast koordinater med OSM-ID anges här som källbelagda. Namnträffar är inte oberoende kontroll mot officiella ritningar, aktuella byggnader eller lokalkännedom.
 
@@ -37,7 +48,7 @@ Liveimporten behöver `curl`, TLS-verifiering och åtkomst till **overpass-api.d
 
 1. Verifiera Plushuset och Åsbo med belagda källor och gärna lokalkännedom.
 2. Importera fullständiga vattenrelationer inklusive öar och verkliga strandlinjer. Där polygoner saknas används älvens kartlinje med förenklad bredd. Vissa smala kanaler och vattendrag kan därför avvika.
-3. Komplettera gång-/cykelbroar och terränghöjder. Nuvarande vägfråga täcker huvud-, sekundär-, tertiär-, stam- och bostadsvägar.
+3. Komplettera gång-/cykelbroar och detaljgranska bro-/vattenhöjder. Nuvarande vägfråga täcker huvud-, sekundär-, tertiär-, stam- och bostadsvägar.
 4. Verifiera alla spelvägar, bossarenor och framkomlighet mot geografin. Anpassa AI-pathfinding till vatten och byggnader.
 5. Skapa mer igenkännbara, rättighetsmässigt tillåtna modeller av varje landmärke.
 

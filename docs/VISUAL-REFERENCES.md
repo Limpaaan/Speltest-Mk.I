@@ -35,3 +35,7 @@ Plushusets och Åsbos positioner är fortfarande ungefärliga. Nästa bildgransk
 bör dokumentera fasadfärg, våningsantal, taksilhuett, entrésida och orientering för
 varje landmärke, med käll-URL och granskningsdatum. Texturerade platshållare ska inte
 presenteras som exakta rekonstruktioner.
+
+## Uppdatering 8 oktober 2026
+
+Nya försök mot Google Maps och Avesta kommun fick HTTP 403 från proxyn. Inga nya bilder eller Street View-panoraman granskades. Skogsbo skolbyggnader är därför uttryckligen tolkade vid källbelagda OSM-centrum. Ägaren har erbjudits att komplettera med lokala bilder för nästa arkitekturpass, exempelvis Avesta kyrka.

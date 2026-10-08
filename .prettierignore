@@ -6,3 +6,6 @@ playwright-report/
 package-lock.json
 data/avesta-osm.json
 shared/geography.json
+
+shared/terrain.json
+data/terrain-source-crop.json

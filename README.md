@@ -4,7 +4,9 @@
 
 En spelbar, svenskspråkig **3D RPG-lootershooterprototyp** i ett postapokalyptiskt Avesta. Stadens försvarare möter det fiktiva danska **Järnsundskompaniet**, en militär invasionsfraktion. Berättelsen handlar om hembygd, gemenskap och motstånd. Fraktionen representerar inte danskar som folk.
 
-Det här är en första vertikal prototyp, inte ett färdigt storskaligt RPG. Version 0.3 har förstapersonsvy, texturerade fasader, synligt vapen och en ombyggd Dalahäst. Grafiken är fortfarande en förenklad prototyp; terrängen är plan tills verkliga höjddata har återhämtats och integrerats. **Vägar och älvförlopp bygger på OpenStreetMap. Sex landmärken har källbelagda positioner; Plushuset och Åsbo är fortfarande ungefärligt placerade.** Se [kartans status och datakällor](docs/MAP.md).
+Version **0.4** är en spelbar webbläsarprototyp med FPS-vy, verkliga Copernicus-höjder, tätare bebyggelse, skog och stenblock. Grundhastigheten är ungefär 60 procent lägre; terräng och lutning påverkar färden. Vägar och älvförlopp bygger på OpenStreetMap. Tio kartpunkter har källbelagda positioner; Plushuset och Åsbo är fortfarande ungefärliga. Omgivningshus, vegetation och byggnadernas arkitektur är tolkade, inte uppmätta. Se [kartans status och datakällor](docs/MAP.md).
+
+Spela på **https://limpaaan.github.io/Speltest-Mk.I/**. Ingen installation behövs för spelaren.
 
 ![FPS-vyn i Avesta: Sista skiftet](docs/images/fps.png)
 
@@ -37,40 +39,46 @@ Vites utvecklingsserver använder port **5173** och skickar `/ws` vidare till sp
 
 ## Innehåll i prototypen
 
-| Klass         | Förankring                    | Förmåga                                         |
-| ------------- | ----------------------------- | ----------------------------------------------- |
-| Stålvakt      | Verkets stål- och industriarv | Härdning: halverad skada i sex sekunder         |
-| Skogsvandrare | Skogsbo och Dalarnas skogar   | Skogens puls: läkning och ökad rörelsehastighet |
-| Kopparslagare | Koppardalen                   | Slaggpuls: områdesskada                         |
-| Älvvakt       | Dalälven och broarna          | Älvstorm: dubblerad eldhastighet                |
+| Klass         | Förankring                    | Förmåga                                                           |
+| ------------- | ----------------------------- | ----------------------------------------------------------------- |
+| Stålvakt      | Verkets stål- och industriarv | Härdning: halverad skada i sex sekunder                           |
+| Skogsvandrare | Skogsbo och Dalarnas skogar   | Skogens puls: läkning och ökad rörelsehastighet                   |
+| Kopparslagare | Koppardalen                   | Slaggpuls: områdesskada                                           |
+| Älvvakt       | Dalälven och broarna          | Älvstorm: dubblerad eldhastighet                                  |
+| Fältvårdare   | Prästjorden                   | Läker närliggande allierade med 55 hälsa                          |
+| Bruksingenjör | Verket                        | 30% gruppskydd i sex sekunder och 20% billigare vapentillverkning |
 
-- Skyddad samlingsplats: inga inkommande skador eller skott från skyddszonen. Lämna den ljusa markringen för att inleda strid.
+- Skyddad samlingsplats: inga inkommande skador eller skott från skyddszonen. Lämna området markerat SKYDDAD i gränssnittet för att inleda strid.
 - FPS-strid med muslås, höjdledssiktning, huvudträffar, sikte, sprint med uthållighet, hukning, vapenmagasin och omladdning. Byggnader och låga hinder blockerar skott efter sin höjd.
-- Tre vapentyper: Bruksbössan, Slaggkastaren och Dalälvens öga. Fyra sällsynthetsgrader från vanlig till legendarisk; vapen skalar med nivå.
+- Sex vapentyper med egna modeller, sikten, rekyl, omladdningsrörelser och eldsätt: Bruksbössan (AK4), Slaggkastaren (Hagel 12), Dalälvens öga (m/96), Bergslagspistolen (m/40), Kopparsprutan (Kpist m/45) och Stålregnet (Ksp 58). Egna speltolkningar, inga modeller eller texter från Generation Zero. Fyra sällsynthetsgrader från vanlig till legendarisk; vapen skalar med nivå.
+- Spränghandgranat m/56: kasta med G, 2,2 sekunders stubin, områdesskada och egenrisk. Medspelare skyddas utanför ömsesidig arena-PvP. Börja med tre, bär högst sex.
+- Inställningar från start- och pausmenyn: mus-/ADS-känslighet, synfält, hårkorsets form/färg/storlek, grafik och vapenrörelse. Sparas lokalt.
+- Torsten säljer granater, Liv ger behandling och Einar markerar patruller i två minuter. Prata med E nära respektive NPC.
 - Maja vid samlingsplatsen erbjuder tre sammanhängande uppdrag: rekognoscera Koppardalen, slå tillbaka vid Verket och befria Dalahästen. Återvänd för XP och skrot; uppdragen sparas offline.
 - Verkstad hos Maja: tillverka ovanliga vapen på din nivå och förstärk bruksrustningen i tre steg, med högst 24 % skademinskning. Priser, närhet och packningsutrymme kontrolleras av simulationen/servern.
-- Fiender patrullerar, reagerar på angripare och söker en väg runt byggnader och via farbara broar. En begränsad rutnätsökning stoppar dem om ingen väg hittas.
+- Soldater, snabba närstridsstormare, långdistansskyttar och tunga pansarvakter har olika färger, utrustning, hälsa och anfall. Fiender patrullerar, reagerar på angripare och söker en väg runt byggnader och via farbara broar. En begränsad rutnätsökning stoppar dem om ingen väg hittas.
 - Personligt loot, 16 packningsplatser, utrustning, skrotning, läkning med skrot, nivåer upp till 30 och två talangspår.
 - Tre grunduppdrag: besegra fem soldater, bärga tre fynd och besegra en boss.
-- Bossarna **Slaggjarlen** vid Verket och **Ryttmästare Mörk** vid Dalahästen har förvarnade områdesattacker och garanterat legendariskt loot. Vanliga fiender återkommer efter 35 sekunder, bossar efter 120 sekunder.
+- Bossarna **Slaggjarlen** vid Verket och **Ryttmästare Mörk** vid Dalahästen har olika silhuetter och förvarnade attacker: cirkulär slaggpuls respektive riktad eldkon och garanterat legendariskt loot. Vanliga fiender återkommer efter 35 sekunder, bossar efter 120 sekunder.
 - Namngivna miljöer: Aalto-huset, Plushuset, Verket, Koppardalen, Dalälven med broar, Dalahästen, Prästjorden, Åsbo och Skogsbo. Vägsträckningar, registrerade vägbroar och älvförlopp bygger på en OSM-export daterad 2026-10-06. Skalan är komprimerad 1:4; byggnader och vattenbredder är förenklade. `~` markerar de två ännu ungefärliga platserna.
 
 ### Kontroller
 
-| Kontroll               | Handling                          |
-| ---------------------- | --------------------------------- |
-| WASD / piltangenter    | Rörelse                           |
-| Mus / vänster musknapp | Sikta / skjut                     |
-| Höger musknapp         | Sikta genom vapnets sikte         |
-| Shift / C              | Sprint / växla hukning            |
-| F2                     | Fuskmeny för AdminL               |
-| Q                      | Klassförmåga                      |
-| R                      | Ladda om                          |
-| E                      | Prata med Maja / bärga eget loot  |
-| H                      | Använd 15 skrot för 50 hälsa      |
-| I                      | Packning, utrustning och talanger |
-| M                      | Stor översiktskarta               |
-| Esc                    | Meny; pausar endast offline       |
+| Kontroll               | Handling                                 |
+| ---------------------- | ---------------------------------------- |
+| WASD / piltangenter    | Rörelse                                  |
+| Mus / vänster musknapp | Sikta / skjut                            |
+| Höger musknapp         | Sikta genom vapnets sikte                |
+| Shift / C              | Sprint / växla hukning                   |
+| F2                     | Fuskmeny för AdminL                      |
+| Q                      | Klassförmåga                             |
+| R                      | Ladda om                                 |
+| E                      | Prata med närmaste NPC / bärga eget loot |
+| G                      | Kasta granat                             |
+| H                      | Använd 15 skrot för 50 hälsa             |
+| I                      | Packning, utrustning och talanger        |
+| M                      | Stor översiktskarta                      |
+| Esc                    | Meny; pausar endast offline              |
 
 ## Validera
 
@@ -124,4 +132,9 @@ autentisering. Vanliga spelare kan inte förfalska en annan sockets behörighet.
 ## Publicera webbklienten
 
 Spelare behöver ingen installation. GitHub Pages-flödet och Render Blueprint är förberedda; se
-[webbpublicering](docs/DEPLOYMENT.md). Ingen aktiv publik speladress är ännu verifierad.
+[webbpublicering](docs/DEPLOYMENT.md). Ägaren har bekräftat publicering av Pages och Render. CI och lokal webbläsarvalidering kontrolleras vid uppdateringar; liveåtkomst kan vara blockerad i utvecklingsmiljön.
+
+Höjddata är bearbetade Copernicus GLO-30 DSM, med egen licens och obligatoriska meddelanden: [höjddata och villkor](docs/TERRAIN.md).
+
+![Terräng och tolkad bebyggelse vid Skogsbo](docs/images/terrain.png)
+![Kikarsikte med fri sikt mot spelvärlden](docs/images/scope.png)

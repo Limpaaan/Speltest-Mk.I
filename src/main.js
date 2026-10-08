@@ -1,5 +1,9 @@
+import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, readSettings } from './settings.js';
 import {
   CAMP,
+  NPCS,
+  nearbyNpc,
+  craftCost,
   CONTRACTS,
   RECIPES,
   armorCost,
@@ -54,7 +58,13 @@ let mouse = { down: false, ads: false },
   keys = new Set(),
   expanded = false,
   storageWarning = false;
-const dialogs = [$('inventory-dialog'), $('pause-dialog'), $('death-dialog'), $('admin-dialog')];
+const dialogs = [...document.querySelectorAll('dialog')];
+let settings;
+try {
+  settings = readSettings(localStorage);
+} catch {
+  settings = { ...DEFAULT_SETTINGS };
+}
 let adminRefresh = false,
   adminSignature = '';
 function chosenName() {
@@ -79,7 +89,7 @@ function resetInput() {
 function status(message) {
   $('menu-status').textContent = message;
 }
-const symbols = ['▥', '♧', '◈', '≈'];
+const symbols = ['▥', '♧', '◈', '≈', '✚', '⚙'];
 Object.entries(CLASSES).forEach(([id, c], i) => {
   const b = document.createElement('button');
   b.className = 'class-card';
@@ -88,6 +98,7 @@ Object.entries(CLASSES).forEach(([id, c], i) => {
   const icon = document.createElement('span');
   icon.className = 'symbol';
   icon.textContent = symbols[i];
+  icon.setAttribute('aria-hidden', 'true');
   const name = document.createElement('strong');
   name.textContent = c.name;
   b.append(icon, name);
@@ -358,9 +369,12 @@ window.addEventListener('keydown', (e) => {
   if (k === 'c') crouch = !crouch;
   if (k === 'q') action({ type: 'ability' });
   if (k === 'e') {
-    if (atCamp(state.players[myId])) openDialog($('camp-dialog'));
+    const npc = nearbyNpc(state.players[myId]);
+    if (npc) openNpc(npc);
+    else if (atCamp(state.players[myId])) openDialog($('camp-dialog'));
     else action({ type: 'loot' });
   }
+  if (k === 'g') action({ type: 'grenade' });
   if (k === 'r') action({ type: 'reload' });
   if (k === 'h') action({ type: 'heal' });
   if (k === 'm') {
@@ -392,8 +406,9 @@ $('capture-mouse').onclick = captureMouse;
 for (const d of dialogs) d.addEventListener('close', updateCaptureHint);
 window.addEventListener('mousemove', (e) => {
   if (!mode || paused() || !pointerLocked()) return;
-  look.yaw -= e.movementX * 0.0022;
-  look.pitch = Math.max(-1.45, Math.min(1.45, look.pitch - e.movementY * 0.0022));
+  const sensitivity = 0.0022 * settings.sensitivity * (mouse.ads ? settings.adsSensitivity : 1);
+  look.yaw -= e.movementX * sensitivity;
+  look.pitch = Math.max(-1.45, Math.min(1.45, look.pitch - e.movementY * sensitivity));
 });
 $('scene').addEventListener('mousedown', (e) => {
   if (!mode || paused()) return;
@@ -494,6 +509,8 @@ function updateHUD() {
   $('admin-open').hidden = !isAdmin(p);
   if ($('admin-dialog').open) renderAdmin();
   if ($('camp-dialog').open) renderCamp();
+  if ($('npc-dialog').open)
+    $('npc-message').textContent = state.time < p.messageUntil ? p.message : '';
   const contract = campaignStatus(p);
   $('campaign-title').textContent = contract.title;
   $('campaign-progress').textContent = contract.ready
@@ -508,6 +525,7 @@ function updateHUD() {
   $('ability-name').textContent = c.ability;
   $('ability-cooldown').textContent =
     p.abilityCooldown > 0 ? `${Math.ceil(p.abilityCooldown)} s` : 'REDO';
+  $('grenade-count').textContent = `G · Spränghandgranat m/56 × ${p.grenades ?? 0}`;
   $('weapon-name').textContent = p.weapon.name;
   $('weapon-rarity').textContent = RARITIES[p.weapon.rarity].toUpperCase();
   $('weapon-rarity').style.color = RARITY_COLORS[p.weapon.rarity];
@@ -521,13 +539,16 @@ function updateHUD() {
       : '';
   $('notification').textContent = message;
   const nearby = state.loot.find((l) => l.owner === myId && Math.hypot(l.x - p.x, l.z - p.z) < 12);
-  $('interact').textContent = atCamp(p)
-    ? 'E · Prata med Maja / uppdrag och verkstad'
-    : inSanctuary(p)
-      ? 'WASD · Lämna samlingsplatsen för att inleda strid'
-      : nearby
-        ? `E · Bärga ${RARITIES[nearby.weapon.rarity].toLowerCase()} ${nearby.weapon.name}`
-        : '';
+  const npc = nearbyNpc(p);
+  $('interact').textContent = npc
+    ? `E · Prata med ${npc.name}`
+    : atCamp(p)
+      ? 'E · Prata med Maja / uppdrag och verkstad'
+      : inSanctuary(p)
+        ? 'WASD · Lämna samlingsplatsen för att inleda strid'
+        : nearby
+          ? `E · Bärga ${RARITIES[nearby.weapon.rarity].toLowerCase()} ${nearby.weapon.name}`
+          : '';
   const place = [...MAP.places].sort(
     (a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z),
   )[0];
@@ -623,6 +644,7 @@ function frame(now) {
       ads: active && mouse.ads,
       moving: active && keys.size > 0,
       crouch,
+      settings,
     });
     renderClock = 0;
   }
@@ -740,10 +762,78 @@ function renderCamp() {
     status.complete || (p.campaign.active && !status.ready) || !atCamp(p);
   $('workshop-stats').textContent =
     `${p.scrap} skrot · Rustning ${p.armor}/3 (${p.armor * 8}% skademinskning). Vapen tillverkas som ovanliga på din nuvarande nivå ${p.level}.`;
-  for (const [kind, recipe] of Object.entries(RECIPES))
-    $('craft-' + kind).disabled = p.scrap < recipe.cost || p.inventory.length >= 16 || !atCamp(p);
+  for (const [kind, recipe] of Object.entries(RECIPES)) {
+    $('craft-' + kind).textContent = `${recipe.name} · ${craftCost(p, kind)} skrot`;
+    $('craft-' + kind).disabled =
+      p.scrap < craftCost(p, kind) || p.inventory.length >= 16 || !atCamp(p);
+  }
   $('upgrade-armor').textContent =
     p.armor >= 3 ? 'RUSTNING FULLT FÖRSTÄRKT' : `FÖRSTÄRK BRUKSRUSTNING · ${armorCost(p)} SKROT`;
   $('upgrade-armor').disabled = p.armor >= 3 || p.scrap < armorCost(p) || !atCamp(p);
   $('camp-message').textContent = state.time < p.messageUntil ? p.message : '';
 }
+
+function applySettings(save = false) {
+  view?.applySettings(settings);
+  $('crosshair').textContent = { cross: '+', dot: '•', circle: '○', none: '' }[settings.crosshair];
+  $('crosshair').style.color = settings.crosshairColor;
+  $('crosshair').style.fontSize = `${settings.crosshairSize}px`;
+  for (const [key, value] of Object.entries(settings)) {
+    const input = $('setting-' + key);
+    if (typeof value === 'boolean') input.checked = value;
+    else input.value = String(value);
+    const output = $(key + '-value');
+    if (output) output.textContent = String(value);
+  }
+  if (save) {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      $('settings-status').textContent = 'Inställningarna är sparade.';
+    } catch {
+      $('settings-status').textContent =
+        'Inställningarna gäller nu, men webbläsaren tillåter inte att de sparas.';
+    }
+  }
+}
+function openSettings() {
+  resetInput();
+  releaseMouse();
+  $('settings-dialog').showModal();
+  updateCaptureHint();
+}
+$('settings-menu').onclick = $('settings-pause').onclick = openSettings;
+for (const key of Object.keys(DEFAULT_SETTINGS))
+  $('setting-' + key).addEventListener('input', (event) => {
+    const input = event.target;
+    settings = normalizeSettings({
+      ...settings,
+      [key]:
+        input.type === 'checkbox'
+          ? input.checked
+          : input.type === 'range'
+            ? Number(input.value)
+            : input.value,
+    });
+    applySettings(true);
+  });
+$('settings-reset').onclick = () => {
+  settings = { ...DEFAULT_SETTINGS };
+  applySettings(true);
+};
+applySettings();
+
+function openNpc(npc) {
+  $('npc-name').textContent = npc.name;
+  $('npc-text').textContent = npc.text;
+  $('npc-service').textContent = npc.label;
+  $('npc-service').onclick = () => action({ type: 'npc', npcId: npc.id });
+  openDialog($('npc-dialog'));
+}
+$('admin-item-kind').replaceChildren(
+  ...Object.entries(WEAPONS).map(([id, w]) => {
+    const option = document.createElement('option');
+    option.value = id;
+    option.textContent = w.name;
+    return option;
+  }),
+);

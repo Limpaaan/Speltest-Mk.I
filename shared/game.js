@@ -1,3 +1,6 @@
+import { ENEMY_TYPES } from './enemies.js';
+import { WEAPONS } from './weapons.js';
+export { WEAPONS } from './weapons.js';
 import {
   atCamp,
   armorCost,
@@ -7,10 +10,14 @@ import {
   restoreCampaign,
   CONTRACTS,
   RECIPES,
+  NPCS,
+  craftCost,
 } from './progression.js';
 import { navigate } from './navigation.js';
 import {
   MAP,
+  groundHeight,
+  travelFactor,
   canStand,
   clearShot,
   inArena,
@@ -26,7 +33,7 @@ export const CLASSES = {
     name: 'Stålvakt',
     subtitle: 'Verkets sista försvarslinje',
     hp: 160,
-    speed: 7,
+    speed: 3,
     color: '#df784a',
     ability: 'Härdning',
     description: 'Stålarbetarens tålighet. Halverad skada i 6 sekunder.',
@@ -35,7 +42,7 @@ export const CLASSES = {
     name: 'Skogsvandrare',
     subtitle: 'Skogsbo håller stånd',
     hp: 105,
-    speed: 8,
+    speed: 3.5,
     color: '#98bd8e',
     ability: 'Skogens puls',
     description: 'Återfå 45 hälsa och spring snabbare i 6 sekunder.',
@@ -44,7 +51,7 @@ export const CLASSES = {
     name: 'Kopparslagare',
     subtitle: 'Koppardalens glöd',
     hp: 125,
-    speed: 7.3,
+    speed: 3.1,
     color: '#e6b85c',
     ability: 'Slaggpuls',
     description: 'En stötvåg skadar fiender inom 32 meter.',
@@ -53,19 +60,40 @@ export const CLASSES = {
     name: 'Älvvakt',
     subtitle: 'Ingen tar våra broar',
     hp: 115,
-    speed: 7.6,
+    speed: 3.3,
     color: '#72bbd4',
     ability: 'Älvstorm',
-    description: 'Dubblerad eldhastighet i 6 sekunder.',
+    description: 'Dubblerad eldhastighet i 6 sekunder. Rör sig snabbare med vapnet i sikte.',
   },
+};
+CLASSES.faltvardare = {
+  name: 'Fältvårdare',
+  subtitle: 'Prästjordens hjälpande händer',
+  hp: 110,
+  speed: 3.2,
+  color: '#d9d8c3',
+  ability: 'Håll ihop',
+  description: 'Läker dig och allierade inom 22 meter med 55 hälsa.',
+};
+CLASSES.bruksingenjor = {
+  name: 'Bruksingenjör',
+  subtitle: 'Verkets uppfinningsrikedom',
+  hp: 135,
+  speed: 2.9,
+  color: '#9ca9b8',
+  ability: 'Fältförstärkning',
+  description: 'Förstärker allierades skydd inom 22 meter i 6 sekunder. Tillverkar 20% billigare.',
+};
+const START_WEAPONS = {
+  stalvakt: 'rifle',
+  skogsvandrare: 'scout',
+  kopparslagare: 'shotgun',
+  alvvakt: 'smg',
+  faltvardare: 'pistol',
+  bruksingenjor: 'lmg',
 };
 export const RARITIES = ['Vanlig', 'Ovanlig', 'Sällsynt', 'Legendarisk'];
 export const RARITY_COLORS = ['#c6cacc', '#91ce84', '#74b6f5', '#ffc866'];
-export const WEAPONS = {
-  rifle: { name: 'Bruksbössan', damage: 19, delay: 0.25, range: 105, mag: 24, reload: 1.4 },
-  shotgun: { name: 'Slaggkastaren', damage: 53, delay: 0.85, range: 40, mag: 6, reload: 1.8 },
-  scout: { name: 'Dalälvens öga', damage: 65, delay: 0.95, range: 155, mag: 8, reload: 1.9 },
-};
 const finite = (n, fallback = 0) => (typeof n === 'number' && Number.isFinite(n) ? n : fallback);
 export function cleanInput(i = {}) {
   if (!i || typeof i !== 'object' || Array.isArray(i)) i = {};
@@ -113,6 +141,8 @@ export function createWorld({ pvp = false, random = Math.random } = {}) {
     enemies: [],
     loot: [],
     shots: [],
+    grenades: [],
+    blasts: [],
     nextId: 1,
     random,
     pvp,
@@ -122,7 +152,12 @@ export function createWorld({ pvp = false, random = Math.random } = {}) {
   for (const camp of camps)
     for (let i = 0; i < 3; i++) {
       const position = walkableNear(camp.x + 30 + i * 9, camp.z + 28 + i * 7);
-      spawnEnemy(w, position.x, position.z);
+      spawnEnemy(
+        w,
+        position.x,
+        position.z,
+        ['raider', 'rusher', camp.id === 'verket' ? 'heavy' : 'marksman'][i],
+      );
     }
   for (const [id, name, title] of [
     ['verket', 'Slaggjarlen', 'Verkets belägringsmaskin'],
@@ -135,6 +170,8 @@ export function createWorld({ pvp = false, random = Math.random } = {}) {
   return w;
 }
 export function spawnEnemy(w, x, z, type = 'raider', name, title) {
+  if (!Object.hasOwn(ENEMY_TYPES, type)) type = 'raider';
+  const stats = ENEMY_TYPES[type];
   const boss = type === 'boss';
   const e = {
     id: `e${w.nextId++}`,
@@ -143,10 +180,10 @@ export function spawnEnemy(w, x, z, type = 'raider', name, title) {
     homeX: x,
     homeZ: z,
     type,
-    name: name || 'Järnsundssoldat',
+    name: name || stats.name,
     title: title || 'Danska Järnsundskompaniet',
-    hp: boss ? 900 : 70,
-    maxHp: boss ? 900 : 70,
+    hp: stats.hp,
+    maxHp: stats.hp,
     cooldown: 1,
     phase: 'patrol',
     windup: 0,
@@ -156,7 +193,7 @@ export function spawnEnemy(w, x, z, type = 'raider', name, title) {
 }
 export function addPlayer(w, id, name, classId) {
   if (typeof classId !== 'string' || !Object.hasOwn(CLASSES, classId)) classId = 'stalvakt';
-  const weapon = makeWeapon(`w${w.nextId++}`);
+  const weapon = makeWeapon(`w${w.nextId++}`, START_WEAPONS[classId]);
   const p = {
     id,
     name:
@@ -185,7 +222,12 @@ export function addPlayer(w, id, name, classId) {
     campaign: newCampaign(),
     weapon,
     inventory: [weapon],
-    ammo: 24,
+    ammo: WEAPONS[weapon.kind].mag,
+    grenades: 3,
+    grenadeCooldown: 0,
+    protection: 0,
+    intel: 0,
+    triggerHeld: false,
     reload: 0,
     cooldown: 0,
     abilityCooldown: 0,
@@ -233,7 +275,11 @@ function hurt(w, target, damage) {
   const armor = target.classId === 'stalvakt' && target.buff > 0 ? 0.5 : 1;
   target.hp = Math.max(
     0,
-    target.hp - damage * armor * (target.classId ? 1 - (target.armor || 0) * 0.08 : 1),
+    target.hp -
+      damage *
+        armor *
+        (target.protection > 0 ? 0.7 : 1) *
+        (target.classId ? 1 - (target.armor || 0) * 0.08 : 1),
   );
   if (target.classId && target.hp === 0)
     notice(w, target, 'Du föll för Avesta. Återvänd till samlingsplatsen.');
@@ -294,11 +340,26 @@ function shoot(w, p) {
   }
   p.ammo--;
   p.cooldown = stats.delay / (p.classId === 'alvvakt' && p.buff > 0 ? 2 : 1);
-  const origin = { x: p.x, y: eyeHeight(p), z: p.z };
+  const count = stats.pellets || 1;
+  for (let i = 0; i < count; i++) {
+    const spread = (stats.spread || 0) * (p.ads ? 0.35 : 1);
+    const angle = count > 1 ? (i * Math.PI * 2) / (count - 1) : w.random() * Math.PI * 2;
+    const radius = count > 1 ? (i === 0 ? 0 : spread) : spread * Math.sqrt(w.random());
+    traceShot(
+      w,
+      p,
+      { ...stats, damage: stats.damage / count },
+      p.aim + Math.cos(angle) * radius,
+      p.pitch + Math.sin(angle) * radius,
+    );
+  }
+}
+function traceShot(w, p, stats, yaw, pitch) {
+  const origin = { x: p.x, y: groundHeight(p.x, p.z) + eyeHeight(p), z: p.z };
   const direction = {
-    x: Math.sin(p.aim) * Math.cos(p.pitch),
-    y: Math.sin(p.pitch),
-    z: Math.cos(p.aim) * Math.cos(p.pitch),
+    x: Math.sin(yaw) * Math.cos(pitch),
+    y: Math.sin(pitch),
+    z: Math.cos(yaw) * Math.cos(pitch),
   };
   const wall = raycastWorld(origin, direction, stats.range);
   let distance = wall?.distance ?? stats.range,
@@ -315,19 +376,26 @@ function shoot(w, p) {
     const along = rayBoxDistance(
       origin,
       direction,
-      { x: target.x - radius, y: 0, z: target.z - radius },
-      { x: target.x + radius, y: bodyHeight(target), z: target.z + radius },
+      { x: target.x - radius, y: groundHeight(target.x, target.z), z: target.z - radius },
+      {
+        x: target.x + radius,
+        y: groundHeight(target.x, target.z) + bodyHeight(target),
+        z: target.z + radius,
+      },
       distance,
     );
     if (along !== null && along < distance) {
       distance = along;
       hit = target;
-      headshot = origin.y + direction.y * along > bodyHeight(target) * 0.8;
+      headshot =
+        origin.y + direction.y * along >
+        groundHeight(target.x, target.z) + bodyHeight(target) * 0.8;
     }
   }
   w.shots.push({
     id: `s${w.nextId++}`,
     owner: p.id,
+    kind: p.weapon.kind,
     x: p.x,
     y: origin.y,
     z: p.z,
@@ -338,7 +406,7 @@ function shoot(w, p) {
     hit: Boolean(hit),
     headshot,
   });
-  const damage = stats.damage * (headshot ? 1.5 : 1);
+  const damage = stats.damage * (headshot ? (p.classId === 'skogsvandrare' ? 1.8 : 1.5) : 1);
   if (hit?.classId) hurt(w, hit, damage);
   else if (hit) damageEnemy(w, hit, damage, p);
 }
@@ -358,6 +426,44 @@ export function act(w, id, action) {
     return;
   }
   if (p.hp <= 0) return;
+  if (action.type === 'grenade' && p.grenades > 0 && p.grenadeCooldown <= 0 && !inSanctuary(p)) {
+    p.grenades--;
+    p.grenadeCooldown = 1;
+    w.grenades.push({
+      type: 'grenade',
+      id: `g${w.nextId++}`,
+      owner: p.id,
+      x: p.x,
+      y: groundHeight(p.x, p.z) + eyeHeight(p),
+      z: p.z,
+      vx: Math.sin(p.aim) * 14,
+      vz: Math.cos(p.aim) * 14,
+      vy: 7 + Math.sin(p.pitch) * 8,
+      fuse: 2.2,
+      damage: p.classId === 'kopparslagare' ? 120 : 95,
+    });
+    return;
+  }
+  if (action.type === 'npc') {
+    const npc = NPCS.find((n) => n.id === action.npcId);
+    if (!npc || Math.hypot(p.x - npc.x, p.z - npc.z) > 5) return;
+    if (npc.service === 'grenades') {
+      if (p.scrap < 20 || p.grenades >= 6)
+        return notice(w, p, 'Du behöver 20 skrot och plats för granater.');
+      p.scrap -= 20;
+      p.grenades = Math.min(6, p.grenades + 3);
+      return notice(w, p, 'Torsten: Ta hand om Avesta. Granater påfyllda.');
+    }
+    if (npc.service === 'treatment') {
+      if (p.scrap < 10 || p.hp >= maxHp(p))
+        return notice(w, p, 'Behandling kräver skador och 10 skrot.');
+      p.scrap -= 10;
+      p.hp = maxHp(p);
+      return notice(w, p, 'Liv: Du är på benen igen.');
+    }
+    p.intel = 120;
+    return notice(w, p, 'Einar: Patrullernas lägen syns på kartan i två minuter.');
+  }
   if (['contract', 'craft', 'armor'].includes(action.type)) {
     if (!atCamp(p)) return notice(w, p, 'Besök Maja vid samlingsplatsen för uppdrag och verkstad.');
     if (action.type === 'contract') {
@@ -377,7 +483,7 @@ export function act(w, id, action) {
     }
     if (action.type === 'craft') {
       if (typeof action.kind !== 'string' || !Object.hasOwn(RECIPES, action.kind)) return;
-      const recipe = RECIPES[action.kind];
+      const recipe = { ...RECIPES[action.kind], cost: craftCost(p, action.kind) };
       if (p.inventory.length >= 16)
         return notice(w, p, 'Packningen är full. Skrota ett vapen först.');
       if (p.scrap < recipe.cost) return notice(w, p, `Du behöver ${recipe.cost} skrot.`);
@@ -398,6 +504,21 @@ export function act(w, id, action) {
   if (action.type === 'ability' && p.abilityCooldown <= 0) {
     p.abilityCooldown = 18;
     p.buff = 6;
+    if (['faltvardare', 'bruksingenjor'].includes(p.classId)) {
+      for (const ally of Object.values(w.players)) {
+        const opponent =
+          w.pvp && p.pvp && ally.pvp && ally.id !== p.id && inArena(p) && inArena(ally);
+        if (
+          ally.hp <= 0 ||
+          opponent ||
+          Math.hypot(ally.x - p.x, ally.z - p.z) > 22 ||
+          !clearShot(p, ally)
+        )
+          continue;
+        if (p.classId === 'faltvardare') ally.hp = Math.min(maxHp(ally), ally.hp + 55);
+        else ally.protection = 6;
+      }
+    }
     if (p.classId === 'skogsvandrare') p.hp = Math.min(maxHp(p), p.hp + 45);
     if (p.classId === 'kopparslagare' && !inSanctuary(p))
       for (const e of w.enemies)
@@ -457,7 +578,15 @@ export function tick(w, dt) {
   w.time += dt;
   w.shots = w.shots.filter((s) => w.time - s.time < 0.16);
   for (const p of Object.values(w.players)) {
-    for (const key of ['cooldown', 'abilityCooldown', 'buff']) p[key] = Math.max(0, p[key] - dt);
+    for (const key of [
+      'cooldown',
+      'abilityCooldown',
+      'buff',
+      'grenadeCooldown',
+      'protection',
+      'intel',
+    ])
+      p[key] = Math.max(0, p[key] - dt);
     if (p.reload > 0) {
       p.reload = Math.max(0, p.reload - dt);
       if (p.reload === 0) p.ammo = WEAPONS[p.weapon.kind].mag;
@@ -475,19 +604,24 @@ export function tick(w, dt) {
       !input.fire &&
       Math.hypot(input.x, input.z) > 0 &&
       p.stamina > 1;
-    p.stamina = Math.max(0, Math.min(100, p.stamina + (p.sprinting ? -24 : 18) * dt));
+    p.stamina = Math.max(
+      0,
+      Math.min(100, p.stamina + (p.sprinting ? (p.classId === 'stalvakt' ? -20 : -24) : 18) * dt),
+    );
     move(
       p,
       input.x,
       input.z,
       CLASSES[p.classId].speed *
-        (p.crouch ? 0.55 : p.sprinting ? 1.55 : 1) *
-        (p.ads ? 0.7 : 1) *
+        travelFactor(p.x, p.z, input.x, input.z) *
+        (p.crouch ? 0.55 : p.sprinting ? 1.4 : 1) *
+        (p.ads ? (p.classId === 'alvvakt' ? 0.85 : 0.7) : 1) *
         (p.classId === 'skogsvandrare' && p.buff > 0 ? 1.6 : 1) *
         dt,
     );
     trackCampaign(p, 'visit');
-    if (input.fire) shoot(w, p);
+    if (input.fire && (WEAPONS[p.weapon.kind].automatic || !p.triggerHeld)) shoot(w, p);
+    p.triggerHeld = input.fire;
   }
   const pathBudget = { remaining: 2 };
   for (const e of w.enemies) {
@@ -497,6 +631,8 @@ export function tick(w, dt) {
       .filter((p) => p.hp > 0 && !inSanctuary(p))
       .sort((a, b) => Math.hypot(a.x - e.x, a.z - e.z) - Math.hypot(b.x - e.x, b.z - e.z));
     const boss = e.type === 'boss';
+    const stats = ENEMY_TYPES[e.type];
+    const rider = e.landmark === 'horse';
     const aggroRange = boss ? 100 : 75;
     const candidates = targets.filter((p) => Math.hypot(p.x - e.x, p.z - e.z) < aggroRange);
     const p =
@@ -505,7 +641,13 @@ export function tick(w, dt) {
       e.windup -= dt;
       if (e.windup <= 0) {
         for (const t of targets)
-          if (Math.hypot(t.x - e.x, t.z - e.z) < 24 && clearShot(e, t)) hurt(w, t, 38);
+          if (
+            Math.hypot(t.x - e.x, t.z - e.z) < (rider ? 38 : 24) &&
+            (!rider ||
+              Math.cos(Math.atan2(t.x - e.x, t.z - e.z) - (e.attackAim || 0)) > Math.cos(0.4)) &&
+            clearShot(e, t)
+          )
+            hurt(w, t, rider ? 48 : 38);
         e.phase = 'hunt';
         e.cooldown = 3;
       }
@@ -517,7 +659,7 @@ export function tick(w, dt) {
       const visible = clearShot(e, p);
       e.phase = 'hunt';
       e.aim = Math.atan2(p.x - e.x, p.z - e.z);
-      if (dist > (boss ? 17 : 14) || !visible) {
+      if (dist > stats.stop || !visible) {
         const next = navigate(e, p, w.time, pathBudget);
         if (next) {
           const length = Math.hypot(next.x - e.x, next.z - e.z);
@@ -526,24 +668,25 @@ export function tick(w, dt) {
               e,
               (next.x - e.x) / length,
               (next.z - e.z) / length,
-              Math.min(length, (boss ? 3 : 4.2) * dt),
+              Math.min(length, stats.speed * dt),
             );
         }
       }
-      if (dist < (boss ? 25 : 40) && e.cooldown <= 0 && visible) {
+      if (dist < (rider ? 38 : stats.range) && e.cooldown <= 0 && visible) {
         if (boss) {
-          e.windup = 1.4;
+          e.windup = rider ? 1.1 : 1.4;
+          e.attackAim = e.aim;
           e.phase = 'warning';
         } else {
-          hurt(w, p, 7);
-          e.cooldown = 1.1;
+          hurt(w, p, stats.damage);
+          e.cooldown = stats.delay;
           w.shots.push({
             id: `s${w.nextId++}`,
             x: e.x,
-            y: eyeHeight(e),
+            y: groundHeight(e.x, e.z) + eyeHeight(e),
             z: e.z,
             endX: p.x,
-            endY: eyeHeight(p),
+            endY: groundHeight(p.x, p.z) + eyeHeight(p),
             endZ: p.z,
             time: w.time,
             enemy: true,
@@ -565,6 +708,52 @@ export function tick(w, dt) {
       }
     }
   }
+  for (const g of w.grenades) {
+    g.fuse -= dt;
+    g.vy -= 18 * dt;
+    const travel = { x: g.vx * dt, y: g.vy * dt, z: g.vz * dt },
+      length = Math.hypot(travel.x, travel.y, travel.z);
+    const hit = length
+      ? raycastWorld(
+          g,
+          { x: travel.x / length, y: travel.y / length, z: travel.z / length },
+          length,
+        )
+      : null;
+    if (hit) {
+      g.vx *= -0.3;
+      g.vz *= -0.3;
+      g.vy = Math.abs(g.vy) * 0.3;
+      g.y = Math.max(g.y, groundHeight(g.x, g.z) + 0.06);
+    } else {
+      g.x += travel.x;
+      g.y += travel.y;
+      g.z += travel.z;
+    }
+    if (g.fuse <= 0) {
+      w.blasts.push({ id: g.id, x: g.x, y: g.y, z: g.z, time: w.time, radius: 14 });
+      const owner = w.players[g.owner];
+      if (owner) {
+        for (const e of w.enemies) {
+          const distance = Math.hypot(e.x - g.x, e.z - g.z);
+          if (e.hp > 0 && distance < 14 && clearShot(g, e))
+            damageEnemy(w, e, g.damage * (1 - distance / 20), owner);
+        }
+        for (const target of Object.values(w.players)) {
+          const distance = Math.hypot(target.x - g.x, target.z - g.z);
+          if (
+            distance < 14 &&
+            (target.id === owner.id ||
+              (w.pvp && owner.pvp && target.pvp && inArena(owner) && inArena(target))) &&
+            clearShot(g, target)
+          )
+            hurt(w, target, g.damage * (1 - distance / 20));
+        }
+      }
+    }
+  }
+  w.grenades = w.grenades.filter((g) => g.fuse > 0);
+  w.blasts = w.blasts.filter((b) => w.time - b.time < 0.65);
   w.enemies = w.enemies.filter((e) => e.hp > 0);
   w.loot = w.loot.filter((l) => l.expires > w.time && w.players[l.owner]);
   for (const r of w.respawns.filter((r) => r.time <= w.time))
@@ -579,6 +768,8 @@ export function snapshot(w) {
     enemies: w.enemies,
     loot: w.loot,
     shots: w.shots,
+    grenades: w.grenades,
+    blasts: w.blasts,
   };
 }
 export function savePlayer(p) {
@@ -595,6 +786,7 @@ export function savePlayer(p) {
     pickups: p.pickups,
     scrap: p.scrap,
     armor: p.armor,
+    grenades: p.grenades,
     crafted: p.crafted,
     campaign: { ...p.campaign },
     inventory: p.inventory,
@@ -658,6 +850,7 @@ export function restorePlayer(w, p, save) {
         )
       ];
   }
+  p.grenades = Math.max(0, Math.min(6, Math.floor(finite(save.grenades, 3))));
   p.armor = Math.max(0, Math.min(3, Math.floor(finite(save.armor))));
   p.crafted = Math.max(0, Math.min(99999, Math.floor(finite(save.crafted))));
   p.campaign = restoreCampaign(save.campaign);

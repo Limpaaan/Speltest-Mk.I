@@ -16,7 +16,7 @@ A*-navigation runt hinder, patruller och angriparprioritering. Maja med tre uppd
 
 ## Nästa steg — Verkligt Avesta och bättre strid
 
-- Återhämta Copernicus-höjddata och integrera samma höjdprovtagning i rendering, kollision, skott och multiplayer. Street View-referenser återstår; kartdata och kommunala referensbilder räcker inte för att verifiera alla fasader.
+- Förfina det integrerade Copernicus-underlaget med lokal kontroll av strandlinjer, broar och mark vid landmärken. Street View-/fotoreferenser återstår för att verifiera fasader.
 - Komplettera OSM-grunden enligt `MAP.md`: verifiera Plushuset och Åsbo, inför fullständiga vattenytor och gångbroar, kontrollera framkomlighet och bygg igenkännbara byggnadsmodeller.
 - Förfina navigationen för trånga passager, gruppsamordning och taktiska skydd.
 - Mer särskiljande bossfaser, vapenanimationer, ljud, träffrespons, skademarkörer och en tydligare introduktion.
@@ -41,3 +41,7 @@ A*-navigation runt hinder, patruller och angriparprioritering. Maja med tre uppd
 ## Inför en publik spelrelease
 
 Separata beslut behövs om spelmotor/plattform för fortsatt produktion, konstbudget, rättigheter, licens, drift, distribution och omfattning. Webbläsarprototypen är en testbar teknisk start, inte ett löfte om att ett fullskaligt spel eller en offentlig server redan är levererad.
+
+## Levererat i 0.4
+
+Copernicus-terräng, tolkade omgivningshus, skog/sten med kollision, långsammare terrängberoende rörelse, sparade inställningar, genomskinliga sikten, sex olika vapentyper, granater, sex klasser, fyra NPC, fyra vanliga fiendefamiljer och olika bossattacker. Ytterligare OSM-punkter för Skogsbo skola och Åsbobacken. Arkitekturen är fortfarande förenklad; fotogranskning är inte genomförd där källor saknas.

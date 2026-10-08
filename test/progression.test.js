@@ -9,7 +9,7 @@ import {
   restorePlayer,
   makeWeapon,
 } from '../shared/game.js';
-import { MAP } from '../shared/map.js';
+import { MAP, groundHeight, eyeHeight } from '../shared/map.js';
 import { CAMP, campaignStatus } from '../shared/progression.js';
 
 test('Maja gives a location contract with a one-time reward and saves its next step', () => {
@@ -99,7 +99,11 @@ test('armor reduces real incoming damage and the campaign tracks the correct bos
   e.hp = 1;
   e.windup = 0;
   e.cooldown = 10;
-  p.input = { aim: Math.PI, pitch: 0, fire: true };
+  p.input = {
+    aim: Math.PI,
+    pitch: Math.atan2(groundHeight(e.x, e.z) + 1.7 - groundHeight(p.x, p.z) - eyeHeight(p), 20),
+    fire: true,
+  };
   tick(w, 0.05);
   assert.equal(p.campaign.boss, true);
   assert.equal(campaignStatus(p).ready, true);

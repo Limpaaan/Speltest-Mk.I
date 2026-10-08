@@ -33,7 +33,7 @@ test('FPS mouse capture, look, sprint, crouch, ADS shooting, inventory and pause
   await page.mouse.down({ button: 'right' });
   await expect(page.locator('body')).toHaveClass(/aiming/);
   await page.mouse.down();
-  await expect(page.locator('#ammo')).not.toHaveText('24');
+  await expect(page.locator('#ammo')).toHaveText('5');
   await page.mouse.up();
   await page.mouse.up({ button: 'right' });
   await page.keyboard.press('r');
@@ -166,4 +166,107 @@ test('Maja offers a contract and workshop purchases survive offline reload', asy
   await expect(page.locator('#workshop-stats')).toContainText('100 skrot · Rustning 1/3');
   await expect(page.locator('#contract-action')).toHaveText('UPPDRAGET PÅGÅR');
   expect(errors).toEqual([]);
+});
+
+test('settings persist, six classes are selectable and the scoped rifle opens its reticle', async ({
+  page,
+}) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/');
+  await expect(page.locator('.class-card')).toHaveCount(6);
+  await page.locator('#settings-menu').click();
+  await page.locator('#setting-sensitivity').fill('1.7');
+  await page.locator('#setting-crosshair').selectOption('dot');
+  await page.locator('#setting-weaponBob').uncheck();
+  await page.locator('#settings-dialog .close-dialog').click();
+  await page.reload();
+  await page.locator('#settings-menu').click();
+  await expect(page.locator('#setting-sensitivity')).toHaveValue('1.7');
+  await expect(page.locator('#setting-weaponBob')).not.toBeChecked();
+  await page.locator('#settings-dialog .close-dialog').click();
+  await page.locator('[data-class-id=skogsvandrare]').click();
+  await page.locator('#player-name').fill('Optikprov');
+  await page.locator('#play-offline').click();
+  await capture(page);
+  await expect(page.locator('#weapon-name')).toContainText('m/96');
+  await expect(page.locator('#crosshair')).toHaveText('•');
+  await page.mouse.down({ button: 'right' });
+  await expect(page.locator('#scope-overlay')).toHaveClass('visible');
+  await page.screenshot({ path: '.local/scope.png' });
+  await page.mouse.up({ button: 'right' });
+  await expect(page.locator('#scope-overlay')).not.toHaveClass('visible');
+  await page.keyboard.press('Escape');
+  await page.locator('#settings-pause').click();
+  await expect(page.locator('#settings-dialog')).toBeVisible();
+  await page.locator('#settings-reset').click();
+  await expect(page.locator('#setting-sensitivity')).toHaveValue('1');
+  expect(errors).toEqual([]);
+});
+
+test('all firearm models equip and aim without client errors', async ({ page }) => {
+  test.setTimeout(120000);
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/');
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'avesta-save-v1-stalvakt',
+      JSON.stringify({
+        version: 1,
+        classId: 'stalvakt',
+        inventory: ['rifle', 'pistol', 'smg', 'lmg', 'shotgun'].map((kind) => ({
+          id: kind,
+          kind,
+          rarity: 0,
+          level: 1,
+        })),
+        equipped: 'rifle',
+      }),
+    ),
+  );
+  await page.locator('#player-name').fill('Vapenprov');
+  await page.locator('#play-offline').click();
+  for (const name of ['Bergslagspistolen', 'Kopparsprutan', 'Stålregnet', 'Slaggkastaren']) {
+    await page.keyboard.press('i');
+    await page
+      .locator('.inventory-item')
+      .filter({ hasText: name })
+      .getByRole('button', { name: 'UTRUSTA', exact: true })
+      .click();
+    await page.locator('#inventory-dialog .close-dialog').click();
+    await capture(page);
+    await expect(page.locator('#weapon-name')).toContainText(name);
+    await expect(page.locator('#ammo')).not.toHaveText('↻', { timeout: 10000 });
+    await page.mouse.down({ button: 'right' });
+    await expect(page.locator('body')).toHaveClass(/aiming/);
+    await page.screenshot({ path: `.local/weapon-${name}.png` });
+    await page.mouse.up({ button: 'right' });
+  }
+  expect(errors).toEqual([]);
+});
+
+test('Torsten can be reached on foot and supplies grenades through his dialogue', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'avesta-save-v1-stalvakt',
+      JSON.stringify({ version: 1, classId: 'stalvakt', scrap: 40, grenades: 0 }),
+    ),
+  );
+  await page.locator('#player-name').fill('Bruksbesökare');
+  await page.locator('#play-offline').click();
+  await capture(page);
+  await page.keyboard.down('d');
+  await expect(page.locator('#interact')).toContainText('Torsten', { timeout: 20000 });
+  await page.keyboard.up('d');
+  await page.keyboard.press('e');
+  await expect(page.locator('#npc-dialog')).toBeVisible();
+  await expect(page.locator('#npc-name')).toContainText('Torsten');
+  await page.locator('#npc-service').click();
+  await expect(page.locator('#npc-message')).toContainText('påfyllda');
+  await expect(page.locator('#grenade-count')).toContainText('× 3');
+  await page.screenshot({ path: '.local/npc.png' });
 });

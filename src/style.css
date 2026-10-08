@@ -570,3 +570,83 @@ body.aiming #crosshair {
   color: #dfc188;
   min-height: 1.6em;
 }
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 20px 0;
+}
+.settings-grid label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.settings-grid output {
+  color: var(--gold);
+}
+.settings-grid input[type='range'] {
+  width: 100%;
+  padding: 0;
+  accent-color: #d7b675;
+}
+.settings-grid input[type='checkbox'] {
+  width: auto;
+}
+.settings-grid input[type='color'] {
+  height: 40px;
+  width: 100%;
+  padding: 3px;
+}
+#scope-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: radial-gradient(circle at center, transparent 0 17vh, rgba(10, 15, 12, 0.88) 17.3vh);
+}
+#scope-overlay.visible {
+  display: block;
+}
+.scope-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32vh;
+  height: 32vh;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    linear-gradient(
+      transparent calc(50% - 0.5px),
+      #152018 calc(50% - 0.5px),
+      #152018 calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    ),
+    linear-gradient(
+      90deg,
+      transparent calc(50% - 0.5px),
+      #152018 calc(50% - 0.5px),
+      #152018 calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    );
+}
+#scope-overlay.visible ~ #crosshair {
+  visibility: hidden;
+}
+#grenade-count {
+  color: #d7c48f;
+  font-size: 12px;
+}
+#terrain-attribution {
+  position: fixed;
+  bottom: 18px;
+  right: 10px;
+  font-size: 9px;
+  color: #a8b7a4;
+  z-index: 7;
+}
+#classes {
+  grid-template-columns: repeat(3, 1fr);
+}

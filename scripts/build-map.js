@@ -48,6 +48,10 @@ const definitions = [
   ['prast', 'Prästjorden', 'node/4577465252', 20, 18, 12, 'district'],
   ['asbo', 'Åsbo', null, 20, 20, 12, 'district', { lat: 60.1535, lon: 16.193 }],
   ['skogsbo', 'Skogsbo', 'node/1896051103', 25, 20, 15, 'district'],
+  ['skogsbo-school', 'Skogsbo skola', 'way/165548511', 20, 12, 6, 'school'],
+  ['skogsbo-gym', 'Skogsbo skola idrottssal', 'way/165548549', 16, 10, 7, 'school'],
+  ['skogsbo-dining', 'Skogsbo Skola Matsal', 'way/1019516058', 14, 10, 5, 'school'],
+  ['asbobacken', 'Åsbobacken', 'node/2665372581', 0, 0, 0, 'viewpoint'],
 ];
 const places = definitions.map(([id, name, sourceId, w, d, h, type, fallback]) => {
   const e = data.elements.find((e) => `${e.type}/${e.id}` === sourceId);
@@ -67,6 +71,7 @@ const places = definitions.map(([id, name, sourceId, w, d, h, type, fallback]) =
     d,
     h,
     type,
+    architecture: 'interpreted-not-surveyed',
   };
 });
 const result = {

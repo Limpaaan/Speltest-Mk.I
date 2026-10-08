@@ -1,11 +1,14 @@
+import { createScenery } from './scenery.js';
+import { terrainHeight } from './terrain.js';
 import geography from './geography.json' with { type: 'json' };
 const aalto = geography.places.find((p) => p.id === 'aalto'),
   skogsbo = geography.places.find((p) => p.id === 'skogsbo');
 export const MAP = {
-  version: 2,
+  version: 3,
   extent: 570,
   spawn: { x: aalto.x + aalto.w / 2 + 10, z: aalto.z + 10 },
-  notice: 'OSM-baserad karta • byggnader och vattenbredder förenklade • ~ = ungefärlig plats',
+  notice:
+    'OSM-karta • Copernicus-höjder • omgivande bebyggelse och arkitektur tolkade • ~ = ungefärlig plats',
   places: geography.places,
   roads: geography.roads,
   rivers: geography.rivers,
@@ -43,8 +46,24 @@ export function waterAt(x, z) {
   );
 }
 export function onBridge(x, z) {
-  return MAP.bridges.some((b) => segmentDistance(x, z, ...b.points) < 6);
+  return MAP.bridges.some((b) => segmentDistance(x, z, ...b.points) < 4.65);
 }
+// A bridge deck interpolates between surveyed endpoint surroundings. Deck clearance is a gameplay adaptation.
+export function groundHeight(x, z) {
+  let height = terrainHeight(x, z);
+  for (const b of MAP.bridges) {
+    const [a, c] = b.points;
+    if (segmentDistance(x, z, a, c) > 5) continue;
+    const dx = c[0] - a[0],
+      dz = c[1] - a[1],
+      length2 = dx * dx + dz * dz;
+    const t = length2 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / length2)) : 0;
+    height = Math.max(height, terrainHeight(...a) * (1 - t) + terrainHeight(...c) * t + 0.2);
+  }
+  return height;
+}
+export const actorHeight = (actor) =>
+  actor.type === 'grenade' ? actor.y : groundHeight(actor.x, actor.z);
 export function canStand(x, z) {
   if (
     !Number.isFinite(x) ||
@@ -54,7 +73,7 @@ export function canStand(x, z) {
   )
     return false;
   if (
-    [...MAP.places, ...MAP.cover].some(
+    [...MAP.places, ...MAP.buildings, ...MAP.cover].some(
       (p) =>
         p.w > 0 &&
         p.d > 0 &&
@@ -63,6 +82,7 @@ export function canStand(x, z) {
     )
   )
     return false;
+  if (obstaclesNear(x, z).some((p) => Math.hypot(x - p.x, z - p.z) < p.radius + 0.35)) return false;
   return !waterAt(x, z) || onBridge(x, z);
 }
 export function walkableNear(x, z) {
@@ -83,9 +103,9 @@ export function inArena(p) {
   return Math.hypot(p.x - MAP.arena.x, p.z - MAP.arena.z) < MAP.arena.radius;
 }
 export function clearShot(a, b) {
-  const origin = { x: a.x, y: (a.y || 0) + eyeHeight(a), z: a.z };
+  const origin = { x: a.x, y: actorHeight(a) + eyeHeight(a), z: a.z };
   const dx = b.x - a.x,
-    dy = (b.y || 0) + eyeHeight(b) - origin.y,
+    dy = actorHeight(b) + eyeHeight(b) - origin.y,
     dz = b.z - a.z;
   const distance = Math.hypot(dx, dy, dz);
   if (!distance) return true;
@@ -97,7 +117,8 @@ export function clearShot(a, b) {
   return !hit || hit.distance >= distance - 1e-6;
 }
 
-export const eyeHeight = (actor) => (actor.type === 'boss' ? 2.75 : actor.crouch ? 1.05 : 1.65);
+export const eyeHeight = (actor) =>
+  actor.type === 'grenade' ? 0.1 : actor.type === 'boss' ? 2.75 : actor.crouch ? 1.05 : 1.65;
 export const bodyHeight = (actor) => (actor.type === 'boss' ? 3.1 : actor.crouch ? 1.2 : 1.85);
 export function rayBoxDistance(origin, direction, min, max, range = Infinity) {
   let near = 0,
@@ -118,13 +139,20 @@ export function rayBoxDistance(origin, direction, min, max, range = Infinity) {
 export function raycastWorld(origin, direction, range) {
   let distance = range,
     hit = null;
-  for (const p of [...MAP.places, ...MAP.cover]) {
+  for (const p of [...MAP.places, ...MAP.buildings, ...MAP.cover]) {
     if (!p.w || !p.d) continue;
     const t = rayBoxDistance(
       origin,
       direction,
-      { x: p.x - p.w / 2, y: 0, z: p.z - p.d / 2 },
-      { x: p.x + p.w / 2, y: p.h, z: p.z + p.d / 2 },
+      { x: p.x - p.w / 2, y: groundHeight(p.x, p.z) - 3, z: p.z - p.d / 2 },
+      {
+        x: p.x + p.w / 2,
+        y:
+          groundHeight(p.x, p.z) +
+          p.h +
+          (['cottage', 'school', 'warehouse'].includes(p.type) ? 2.2 : 0),
+        z: p.z + p.d / 2,
+      },
       distance,
     );
     if (t !== null && t < distance) {
@@ -132,12 +160,43 @@ export function raycastWorld(origin, direction, range) {
       hit = { id: p.id, kind: p.type };
     }
   }
-  if (direction.y < -1e-9) {
-    const t = -origin.y / direction.y;
-    if (t >= 0 && t < distance) {
+  const end = [origin.x + direction.x * distance, origin.z + direction.z * distance];
+  for (const p of [...MAP.trees, ...MAP.rocks]) {
+    if (segmentDistance(p.x, p.z, [origin.x, origin.z], end) > p.radius + 0.1) continue;
+    const base = groundHeight(p.x, p.z);
+    const t = rayBoxDistance(
+      origin,
+      direction,
+      { x: p.x - p.radius, y: base, z: p.z - p.radius },
+      { x: p.x + p.radius, y: base + p.h, z: p.z + p.radius },
+      distance,
+    );
+    if (t !== null && t < distance) {
       distance = t;
-      hit = { id: 'ground', kind: 'ground' };
+      hit = { id: 'scenery', kind: 'cover' };
     }
+  }
+  // Sample at <=1 unit then bisect: catches hills even for horizontal/uphill fire.
+  const clearance = (t) =>
+    origin.y +
+    direction.y * t -
+    groundHeight(origin.x + direction.x * t, origin.z + direction.z * t);
+  let previous = 0;
+  for (let t = 0; t <= distance; t = Math.min(distance, t + 1)) {
+    if (clearance(t) < 0) {
+      let low = previous,
+        high = t;
+      for (let i = 0; i < 12; i++) {
+        const mid = (low + high) / 2;
+        if (clearance(mid) < 0) high = mid;
+        else low = mid;
+      }
+      distance = (low + high) / 2;
+      hit = { id: 'ground', kind: 'ground' };
+      break;
+    }
+    if (t === distance) break;
+    previous = t;
   }
   return hit
     ? {
@@ -148,4 +207,26 @@ export function raycastWorld(origin, direction, range) {
         z: origin.z + direction.z * distance,
       }
     : null;
+}
+
+Object.assign(MAP, createScenery(MAP, waterAt, segmentDistance, terrainHeight));
+const obstacleCells = new Map();
+for (const obstacle of [...MAP.trees, ...MAP.rocks]) {
+  const key = `${Math.floor(obstacle.x / 10)},${Math.floor(obstacle.z / 10)}`;
+  if (!obstacleCells.has(key)) obstacleCells.set(key, []);
+  obstacleCells.get(key).push(obstacle);
+}
+function obstaclesNear(x, z) {
+  const found = [],
+    cx = Math.floor(x / 10),
+    cz = Math.floor(z / 10);
+  for (let dx = -1; dx <= 1; dx++)
+    for (let dz = -1; dz <= 1; dz++)
+      found.push(...(obstacleCells.get(`${cx + dx},${cz + dz}`) || []));
+  return found;
+}
+export function travelFactor(x, z, dx, dz) {
+  const road = MAP.roads.some((r) => segmentDistance(x, z, ...r.points) < 3.5);
+  const slope = Math.abs(groundHeight(x + dx, z + dz) - groundHeight(x, z));
+  return (road ? 1 : 0.78) * Math.max(0.4, 1 - slope * 0.65);
 }
