@@ -37,9 +37,28 @@ test('a repository subpath caches and starts solo with the network disabled', as
   const context = await browser.newContext();
   try {
     const page = await context.newPage();
+    const joins = [];
+    if (process.env.EXPECT_GAME_SERVER_URL) {
+      // Verify the compiled connection URL without depending on a live Render service.
+      await page.routeWebSocket(process.env.EXPECT_GAME_SERVER_URL, (socket) => {
+        socket.onMessage((message) => {
+          joins.push(JSON.parse(message));
+          socket.send(JSON.stringify({ type: 'error', message: 'Testanslutning klar' }));
+        });
+      });
+    }
     await page.goto(`http://127.0.0.1:${server.address().port}${prefix}`);
     if (process.env.EXPECT_STATIC_SOLO === '1')
       await expect(page.locator('#play-online')).toBeDisabled();
+    if (process.env.EXPECT_STATIC_SOLO === '0')
+      await expect(page.locator('#play-online')).toBeEnabled();
+    if (process.env.EXPECT_GAME_SERVER_URL) {
+      await page.locator('#player-name').fill('RenderTest');
+      await page.locator('#play-online').click();
+      await expect.poll(() => joins[0]?.type).toBe('join');
+      expect(joins[0].name).toBe('RenderTest');
+      await expect(page.locator('#menu-status')).toHaveText('Testanslutning klar');
+    }
     await page.evaluate(async () => {
       await navigator.serviceWorker.ready;
       if (!navigator.serviceWorker.controller)

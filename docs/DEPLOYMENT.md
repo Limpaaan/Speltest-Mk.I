@@ -32,17 +32,25 @@ till ett suffix. Kontrollera att `/health` svarar med `status: ok`.
 
 ## 2. Koppla Pages till rätt server
 
-I GitHub-repot, öppna **Settings → Secrets and variables → Actions → Variables**.
-Skapa **repository variable** `VITE_GAME_SERVER_URL` med hela WebSocket-adressen:
+Ägaren har angett Render-adressen `https://avesta-sista-skiftet.onrender.com`.
+Pages-flödet använder därför följande adress som standard, utan extra inställningar:
 
 ```text
-wss://DEN-FAKTISKA-RENDER-ADRESSEN.onrender.com/ws
+wss://avesta-sista-skiftet.onrender.com/ws
 ```
 
-Använd tjänstens riktiga värdnamn, protokollet `wss://` och sökvägen `/ws`.
-Detta är offentlig klientkonfiguration, inte en hemlighet. En API-nyckel får aldrig
-läggas i någon `VITE_*`-variabel. Utan servervariabeln publiceras en fungerande
-soloklient med avstängd multiplayerknapp.
+För att byta server, öppna **Settings → Secrets and variables → Actions → Variables**
+och ange repository variable `VITE_GAME_SERVER_URL`. Den ersätter standardadressen.
+Använd protokollet `wss://` och sökvägen `/ws`. Detta är offentlig klientkonfiguration;
+en API-nyckel får aldrig läggas i någon `VITE_*`-variabel.
+
+Pages-byggets webbläsartest kontrollerar att multiplayer är tillgängligt och att
+klienten skickar anslutningen till den konfigurerade WebSocket-adressen. Testet
+ersätter nätverksanslutningen med ett testsvar; det verifierar inte Render-tjänstens
+publika tillgänglighet. Det kontrollerar också att solospel fungerar offline.
+
+Fristående statiska byggen med `VITE_STATIC_HOST=true` och utan serveradress ger
+fortfarande en soloklient med avstängd multiplayerknapp.
 
 ## 3. Aktivera och publicera Pages
 
