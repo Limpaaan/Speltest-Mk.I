@@ -49,3 +49,7 @@ Copernicus-terräng, tolkade omgivningshus, skog/sten med kollision, långsammar
 ## Levererat i 0.5
 
 Fotobaserade tolkningar av Verket, Aaltohuset och Dalahästen; första besökbara bottenplanet med arkivuppdrag. Material och vapendelar som huvudsaklig loot, brukskronor och försäljare, fjorton funktionella vapendelar och materialbaserade recept. Klasspecialiteter, tunga utrustningskrav och talangträd med alternativa stöd-/anfallsgrenar. Se `EQUIPMENT.md` för regler och begränsningar. Fortsatt arbete: fler interiörer, djupare uppdragskedjor, klassbalans och beständiga onlinekaraktärer.
+
+## Implementerat i 0.6
+
+Åtta kapitel i kampanjen Kopparhjärta med journal, ledtrådar, målmarkeringar, interaktion vid radio/elutrustning och ett avslut. Två passiva klasstalanger och en separat X-förmåga per klass. Höstljus, markvariation, ytstruktur, björkar, gräs, vattennormaler och mer miljödekor. Fortsatt arbete: ljud/röster, fler uppdragstyper, co-op-delad uppdragsprogression, mer detaljerade modeller och längre balans-/prestandatest på riktiga GPU:er. Se STORY.md. Implementerat är inte samma sak som publicerat; driftsstatus kontrolleras separat.

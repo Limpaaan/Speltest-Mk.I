@@ -1,3 +1,5 @@
+import { Atmosphere, tintTerrain, foliageMaterial, waterNormals } from './atmosphere.js';
+import { campaignTarget } from '../shared/story.js';
 import { buildArtist, renderPaint } from './art.js';
 import { lootColor } from '../shared/items.js';
 import { CACHES } from '../shared/economy.js';
@@ -29,17 +31,20 @@ export class WorldView {
     this.renderer.shadowMap.enabled = !this.softwareRenderer;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.08;
     this.renderer.autoClear = false;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#96a6a3');
-    this.scene.fog = new THREE.FogExp2('#96a6a3', 0.003);
+    this.scene.background = new THREE.Color('#b2b2a0');
+    this.scene.fog = new THREE.FogExp2('#b2b2a0', 0.0021);
     this.camera = new THREE.PerspectiveCamera(78, 1, 0.04, 1300);
     this.camera.rotation.order = 'YXZ';
-    this.scene.add(new THREE.HemisphereLight('#d3dfdd', '#605f43', 2.4));
-    this.sun = new THREE.DirectionalLight('#f6deba', 2.1);
+    this.scene.add(new THREE.HemisphereLight('#a6bccb', '#4d4737', 1.45));
+    this.sun = new THREE.DirectionalLight('#ffdcaa', 3.0);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(1024, 1024);
+    this.sun.position.set(-110, 80, 180);
+    this.sun.target.position.set(0, 0, 95);
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.bias = -0.0002;
     Object.assign(this.sun.shadow.camera, {
       left: -80,
       right: 80,
@@ -61,6 +66,9 @@ export class WorldView {
     this.ads = 0;
     this.buildSky();
     this.buildMap();
+    this.atmosphere = new Atmosphere(this);
+    this.s.water.normalMap = waterNormals();
+    this.s.water.normalScale.set(0.45, 0.45);
     this.flush();
     this.buildWeapon();
     this.lamp = new THREE.SpotLight('#fff1cf', 35, 45, 0.35, 0.5, 1);
@@ -156,15 +164,18 @@ export class WorldView {
     c.height = 512;
     const ctx = c.getContext('2d'),
       gradient = ctx.createLinearGradient(0, 0, 0, 512);
-    gradient.addColorStop(0, '#627d8b');
-    gradient.addColorStop(1, '#b1b9b0');
+    gradient.addColorStop(0, '#344f68');
+    gradient.addColorStop(0.45, '#718b9a');
+    gradient.addColorStop(0.58, '#b2b2a0');
+    gradient.addColorStop(0.72, '#c5b999');
+    gradient.addColorStop(1, '#636e69');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 1024, 512);
     for (let i = 0; i < 45; i++) {
       const x = (Math.sin(i * 9) + 1) * 512,
         y = (Math.cos(i * 13) + 1) * 190;
       const g = ctx.createRadialGradient(x, y, 0, x, y, 120);
-      g.addColorStop(0, '#d0d3ca50');
+      g.addColorStop(0, '#dcd6bf65');
       g.addColorStop(1, '#d0d3ca00');
       ctx.fillStyle = g;
       ctx.fillRect(x - 150, y - 150, 300, 300);
@@ -173,9 +184,24 @@ export class WorldView {
     tex.colorSpace = THREE.SRGBColorSpace;
     this.sky = new THREE.Mesh(
       new THREE.SphereGeometry(950, 32, 16),
-      new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, depthWrite: false }),
+      new THREE.MeshBasicMaterial({
+        map: tex,
+        side: THREE.BackSide,
+        depthWrite: false,
+        fog: false,
+      }),
     );
     this.scene.add(this.sky);
+    if (!this.softwareRenderer) {
+      const environment = tex.clone();
+      environment.mapping = THREE.EquirectangularReflectionMapping;
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      this.environmentMap = pmrem.fromEquirectangular(environment);
+      this.scene.environment = this.environmentMap.texture;
+      this.scene.environmentIntensity = 0.32;
+      environment.dispose();
+      pmrem.dispose();
+    }
   }
   buildMap() {
     const s = this.s;
@@ -185,6 +211,8 @@ export class WorldView {
     for (let i = 0; i < points.count; i++)
       points.setY(i, terrainHeight(points.getX(i), points.getZ(i)));
     ground.computeVertexNormals();
+    tintTerrain(ground);
+    s.soil.vertexColors = true;
     const uv = ground.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 120, uv.getY(i) * 120);
     this.static(ground, s.soil, 0, 0, 0);
@@ -294,9 +322,41 @@ export class WorldView {
     this.baseY = 0;
     for (const p of MAP.cover) {
       this.baseY = groundHeight(p.x, p.z);
-      this.box(p.x, p.h / 2, p.z, p.w, p.h, p.d, p.type === 'crate' ? s.wood : s.rust);
       if (p.type === 'wreck') {
-        this.box(p.x, p.h + 0.22, p.z, 1.5, 0.45, 1.8, s.metal);
+        const body = new THREE.BoxGeometry(p.w - 0.12, 0.55, p.d);
+        this.static(body, s.rust, p.x, 0.53, p.z);
+        body.dispose();
+        const profile = new THREE.Shape();
+        profile.moveTo(-1.4, 0);
+        profile.lineTo(-0.7, 0.62);
+        profile.lineTo(0.65, 0.62);
+        profile.lineTo(1.25, 0);
+        profile.closePath();
+        const cabin = new THREE.ExtrudeGeometry(profile, {
+          depth: 1.5,
+          bevelEnabled: true,
+          bevelSegments: 2,
+          bevelSize: 0.05,
+          bevelThickness: 0.03,
+          steps: 1,
+        });
+        this.static(cabin, s.glass, p.x - 0.75, 0.8, p.z, 1, 1, 1, Math.PI / 2);
+        cabin.dispose();
+        this.box(p.x, 1.4, p.z, 1.54, 0.055, 1.35, s.metal);
+        const wheel = new THREE.CylinderGeometry(0.29, 0.29, 0.19, 16);
+        wheel.rotateZ(Math.PI / 2);
+        for (const side of [-1, 1]) {
+          for (const end of [-1, 1])
+            this.static(wheel, s.roof, p.x + side * 0.85, 0.3, p.z + end * 1.4);
+          this.box(p.x + side * 0.6, 0.72, p.z + p.d / 2 + 0.025, 0.25, 0.15, 0.04, s.ivory);
+          this.box(p.x + side * 0.6, 0.72, p.z - p.d / 2 - 0.025, 0.25, 0.13, 0.04, s.rust);
+        }
+        wheel.dispose();
+        this.box(p.x, 0.42, p.z + p.d / 2 + 0.07, p.w, 0.12, 0.16, s.zinc);
+      } else {
+        this.box(p.x, p.h / 2, p.z, p.w, p.h, p.d, p.type === 'crate' ? s.wood : s.rust);
+        for (const side of [-1, 1])
+          this.box(p.x + side * p.w * 0.32, p.h / 2, p.z, 0.055, p.h + 0.05, p.d + 0.05, s.metal);
       }
     }
     this.baseY = 0;
@@ -419,31 +479,35 @@ export class WorldView {
   }
   vegetation() {
     const dummy = new THREE.Object3D();
-    const trunks = new THREE.InstancedMesh(
-      new THREE.CylinderGeometry(0.32, 0.48, 1, 8),
-      this.s.bark,
-      MAP.trees.length,
-    );
-    const crowns = new THREE.InstancedMesh(
-      new THREE.PlaneGeometry(1, 1),
-      spruceMaterial(),
-      MAP.trees.length * 3,
-    );
-    let count = 0;
-    for (const { x, z, h } of MAP.trees) {
-      dummy.rotation.set(0, 0, 0);
-      dummy.position.set(x, groundHeight(x, z) + h / 2, z);
-      dummy.scale.set(1, h, 1);
-      dummy.updateMatrix();
-      trunks.setMatrixAt(count, dummy.matrix);
-      for (let j = 0; j < 3; j++) {
-        dummy.position.set(x, groundHeight(x, z) + h * 0.5, z);
-        dummy.rotation.y = (j * Math.PI) / 3 + count;
-        dummy.scale.set(h * 0.48, h, 1);
+    for (const birch of [false, true]) {
+      const trees = MAP.trees.filter((_, i) => (i % 5 === 0) === birch);
+      const trunks = new THREE.InstancedMesh(
+        new THREE.CylinderGeometry(0.26, 0.48, 1, 8),
+        birch ? this.s.birch : this.s.bark,
+        trees.length,
+      );
+      const crowns = new THREE.InstancedMesh(
+        new THREE.PlaneGeometry(1, 1),
+        birch ? foliageMaterial('birch') : spruceMaterial(),
+        trees.length * 3,
+      );
+      trees.forEach(({ x, z, h }, i) => {
+        dummy.rotation.set(0, 0, 0);
+        dummy.position.set(x, groundHeight(x, z) + h / 2, z);
+        dummy.scale.set(1, h, 1);
         dummy.updateMatrix();
-        crowns.setMatrixAt(count * 3 + j, dummy.matrix);
-      }
-      count++;
+        trunks.setMatrixAt(i, dummy.matrix);
+        for (let j = 0; j < 3; j++) {
+          dummy.position.set(x, groundHeight(x, z) + h * 0.5, z);
+          dummy.rotation.y = (j * Math.PI) / 3 + i;
+          dummy.scale.set(h * (birch ? 0.68 : 0.48), h, 1);
+          dummy.updateMatrix();
+          crowns.setMatrixAt(i * 3 + j, dummy.matrix);
+        }
+      });
+      trunks.castShadow = crowns.castShadow = true;
+      trunks.receiveShadow = crowns.receiveShadow = true;
+      this.scene.add(trunks, crowns);
     }
     const rocks = new THREE.InstancedMesh(
       new THREE.IcosahedronGeometry(1, 1),
@@ -460,10 +524,6 @@ export class WorldView {
     rocks.castShadow = true;
     rocks.receiveShadow = true;
     this.scene.add(rocks);
-    trunks.count = count;
-    crowns.count = count * 3;
-    trunks.castShadow = crowns.castShadow = true;
-    this.scene.add(trunks, crowns);
   }
   buildCamp() {
     const { x, z } = CAMP;
@@ -755,16 +815,18 @@ export class WorldView {
         );
       this.flash.visible = fired && !stats.suppressed;
       this.weapon.visible = player.hp > 0;
-      this.sun.position.set(player.x - 70, 160, player.z + 70);
-      this.sun.target.position.set(player.x, 0, player.z);
+      const base = groundHeight(player.x, player.z);
+      this.sun.position.set(player.x - 110, base + 75, player.z + 90);
+      this.sun.target.position.set(player.x, base, player.z);
     } else {
       document.getElementById('scope-overlay')?.classList.remove('visible');
       this.camera.position.set(23 + Math.sin(time * 0.04) * 3, groundHeight(23, 117) + 2, 117);
       this.camera.lookAt(-5, groundHeight(-5, 85) + 5, 85);
       this.camera.fov = 62;
-      this.sun.position.set(-70, 160, 170);
+      this.sun.position.set(-110, 80, 180);
       this.sun.target.position.set(0, 0, 95);
     }
+    this.atmosphere.update(time, player);
     this.camera.updateProjectionMatrix();
     this.sky.position.copy(this.camera.position);
     this.renderer.clear();
@@ -776,6 +838,29 @@ export class WorldView {
   }
   applySettings(settings) {
     this.settings = settings;
+    const detail = settings.graphics !== 'low' && !this.softwareRenderer;
+    this.atmosphere.quality(this.softwareRenderer ? 'low' : settings.graphics);
+    this.scene.environment = detail ? this.environmentMap?.texture || null : null;
+    const materials = new Set();
+    this.scene.traverse((object) => {
+      for (const material of Array.isArray(object.material) ? object.material : [object.material])
+        if (material) materials.add(material);
+    });
+    for (const material of materials) {
+      if (!Object.hasOwn(material.userData, 'detailBump'))
+        material.userData.detailBump = material.bumpMap || null;
+      const map = detail ? material.userData.detailBump : null;
+      if (material.bumpMap !== map) {
+        material.bumpMap = map;
+        material.needsUpdate = true;
+      }
+    }
+    const shadowSize = settings.graphics === 'high' ? 2048 : 1024;
+    if (this.sun.shadow.mapSize.x !== shadowSize) {
+      this.sun.shadow.mapSize.set(shadowSize, shadowSize);
+      this.sun.shadow.map?.dispose();
+      this.sun.shadow.map = null;
+    }
     const quality = { low: 0.65, medium: 1, high: 1.5 }[settings.graphics];
     this.renderer.setPixelRatio(
       this.softwareRenderer ? Math.min(0.75, quality) : Math.min(devicePixelRatio, quality),
@@ -884,6 +969,18 @@ export function drawMap(canvas, state, myId, expanded = false) {
     ctx.beginPath();
     ctx.arc(pos(e.x), pos(e.z), e.type === 'boss' ? 3.5 : 1.5, 0, Math.PI * 2);
     ctx.fill();
+  }
+  const target = state.players[myId] && campaignTarget(state.players[myId]);
+  if (target) {
+    ctx.strokeStyle = '#ffdb86';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pos(target.x), pos(target.z), 7, 0, Math.PI * 2);
+    ctx.stroke();
+    if (expanded) {
+      ctx.fillStyle = '#ffdb86';
+      ctx.fillText('◆ ' + target.name, pos(target.x), pos(target.z) + 19);
+    }
   }
   for (const l of state.loot)
     if (l.owner === myId) {

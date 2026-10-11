@@ -1,3 +1,4 @@
+import { hasSkill } from './class-skills.js';
 import {
   MATERIALS,
   ATTACHMENTS,
@@ -53,7 +54,11 @@ export function collect(p, item) {
     if (attachmentCount(p) >= 24) return false;
     p.attachments[item.attachment] = (p.attachments[item.attachment] || 0) + 1;
   } else if (item.material) {
-    const n = Math.ceil(item.quantity * (p.skills.includes('fieldcraft') ? 1.25 : 1));
+    const n = Math.ceil(
+      item.quantity *
+        (p.skills.includes('fieldcraft') ? 1.25 : 1) *
+        (hasSkill(p, 'salvager') && ['electronics', 'copper'].includes(item.material) ? 1.5 : 1),
+    );
     if (p.materials[item.material] + n > 999) return false;
     p.materials[item.material] += n;
   } else return false;
@@ -139,7 +144,7 @@ export function economyAction(
     if (!Object.hasOwn(p.supplies, a.key) || p.supplies[a.key] <= 0) return true;
     if (a.key === 'medkit') {
       if (p.hp >= maxHp(p)) return true;
-      p.hp = Math.min(maxHp(p), p.hp + 70);
+      p.hp = Math.min(maxHp(p), p.hp + (hasSkill(p, 'sterile') ? 95 : 70));
     } else if (a.key === 'filter') p.protection = Math.max(p.protection, 25);
     else p.protection = Math.max(p.protection, 40);
     p.supplies[a.key]--;

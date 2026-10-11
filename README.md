@@ -4,7 +4,7 @@
 
 En spelbar, svenskspråkig **3D RPG-lootershooterprototyp** i ett postapokalyptiskt Avesta. Stadens försvarare möter det fiktiva danska **Järnsundskompaniet**, en militär invasionsfraktion. Berättelsen handlar om hembygd, gemenskap och motstånd. Fraktionen representerar inte danskar som folk.
 
-Version **0.4** är en spelbar webbläsarprototyp med FPS-vy, verkliga Copernicus-höjder, tätare bebyggelse, skog och stenblock. Grundhastigheten är ungefär 60 procent lägre; terräng och lutning påverkar färden. Vägar och älvförlopp bygger på OpenStreetMap. Tio kartpunkter har källbelagda positioner; Plushuset och Åsbo är fortfarande ungefärliga. Omgivningshus, vegetation och byggnadernas arkitektur är tolkade, inte uppmätta. Se [kartans status och datakällor](docs/MAP.md).
+Version **0.6** är en spelbar webbläsarprototyp med FPS-vy, verkliga Copernicus-höjder, tätare bebyggelse, skog och stenblock. Grundhastigheten är ungefär 60 procent lägre; terräng och lutning påverkar färden. Vägar och älvförlopp bygger på OpenStreetMap. Tio kartpunkter har källbelagda positioner; Plushuset och Åsbo är fortfarande ungefärliga. Omgivningshus, vegetation och byggnadernas arkitektur är tolkade, inte uppmätta. Se [kartans status och datakällor](docs/MAP.md).
 
 Spela på **https://limpaaan.github.io/Speltest-Mk.I/**. Ingen installation behövs för spelaren.
 
@@ -54,7 +54,7 @@ Vites utvecklingsserver använder port **5173** och skickar `/ws` vidare till sp
 - Spränghandgranat m/56: kasta med G, 2,2 sekunders stubin, områdesskada och egenrisk. Medspelare skyddas utanför ömsesidig arena-PvP. Börja med tre, bär högst sex.
 - Inställningar från start- och pausmenyn: mus-/ADS-känslighet, synfält, hårkorsets form/färg/storlek, grafik och vapenrörelse. Sparas lokalt.
 - Torsten säljer granater, Liv ger behandling och Einar markerar patruller i två minuter. Prata med E nära respektive NPC.
-- Maja vid samlingsplatsen erbjuder tre sammanhängande uppdrag: rekognoscera Koppardalen, slå tillbaka vid Verket och befria Dalahästen. Återvänd för XP och skrot; uppdragen sparas offline.
+- Maja vid samlingsplatsen leder den åtta kapitel långa kampanjen Kopparhjärta: följ Nils spår och återta stadens reservkraft och radiosamband. J öppnar journalen; guldmarkeringen visar nästa mål. Återvänd för XP och skrot; uppdragen sparas offline.
 - Verkstad hos Maja: tillverka ovanliga vapen på din nivå och förstärk bruksrustningen i tre steg, med högst 24 % skademinskning. Priser, närhet och packningsutrymme kontrolleras av simulationen/servern.
 - Soldater, snabba närstridsstormare, långdistansskyttar och tunga pansarvakter har olika färger, utrustning, hälsa och anfall. Fiender patrullerar, reagerar på angripare och söker en väg runt byggnader och via farbara broar. En begränsad rutnätsökning stoppar dem om ingen väg hittas.
 - Personligt loot, 16 packningsplatser, utrustning, skrotning, läkning med skrot, nivåer upp till 30 och två talangspår.
@@ -64,21 +64,24 @@ Vites utvecklingsserver använder port **5173** och skickar `/ws` vidare till sp
 
 ### Kontroller
 
-| Kontroll               | Handling                                 |
-| ---------------------- | ---------------------------------------- |
-| WASD / piltangenter    | Rörelse                                  |
-| Mus / vänster musknapp | Sikta / skjut                            |
-| Höger musknapp         | Sikta genom vapnets sikte                |
-| Shift / C              | Sprint / växla hukning                   |
-| F2                     | Fuskmeny för AdminL                      |
-| Q                      | Klassförmåga                             |
-| R                      | Ladda om                                 |
-| E                      | Prata med närmaste NPC / bärga eget loot |
-| G                      | Kasta granat                             |
-| H                      | Använd 15 skrot för 50 hälsa             |
-| I                      | Packning, utrustning och talanger        |
-| M                      | Stor översiktskarta                      |
-| Esc                    | Meny; pausar endast offline              |
+| Kontroll               | Handling                                  |
+| ---------------------- | ----------------------------------------- |
+| WASD / piltangenter    | Rörelse                                   |
+| Mus / vänster musknapp | Sikta / skjut                             |
+| Höger musknapp         | Sikta genom vapnets sikte                 |
+| Shift / C              | Sprint / växla hukning                    |
+| F2                     | Fuskmeny för AdminL                       |
+| J                      | Skiftjournal: berättelse och uppdragsfynd |
+| X                      | Klassens upplåsta taktiska förmåga        |
+| Z                      | Vald stöd-/anfallsförmåga                 |
+| Q                      | Klassförmåga                              |
+| R                      | Ladda om                                  |
+| E                      | Prata med närmaste NPC / bärga eget loot  |
+| G                      | Kasta granat                              |
+| H                      | Använd 15 skrot för 50 hälsa              |
+| I                      | Packning, utrustning och talanger         |
+| M                      | Stor översiktskarta                       |
+| Esc                    | Meny; pausar endast offline               |
 
 ## Validera
 
@@ -146,3 +149,11 @@ Vanliga fiender släpper främst material och vapendelar; hela vapen förekommer
 Verket, Aaltohuset och Dalahästen har omarbetats efter ägarens fotografier. Aaltohusets bottenplan går att besöka genom den östra entrén; sök arkivet med **E** och lämna evakueringsplanen hos Maja. Interiören är en spelmässig tolkning. Se [utrustning och progression](docs/EQUIPMENT.md) och [bildreferenser](docs/VISUAL-REFERENCES.md).
 
 Anders Delbom säljer sex sprayfärger och ritar glassar/döskallar vid en **tillfällig ateljé på Axel Johnsons väg** (markerad på stora kartan). Välj färg och motiv i packningen, spraya med **B**. Placeringen vid exakt 117B väntar på en bekräftad adresspunkt. Hans dialog öppnar Booli-sökning för Odlargränd 16; något aktuellt fastighetsvärde har inte kunnat verifieras.
+
+## Nytt i 0.6 — Kopparhjärta
+
+En sammanhängande kampanj i åtta kapitel ger uppdragen en gemensam berättelse, fyndtexter och ett avslut. **J** öppnar journalen och **E** används vid uppdragens apparater. Befintliga kampanjsparningar fortsätter där de slutade. Sex klasser får vardera två tematiska passiva talanger och en ny taktisk förmåga på **X**.
+
+Varmt höstljus, svalare skuggor, varierad mark med detaljrelief, sprucken asfalt, björkar, vajande gräs, vattennormaler och fler små miljödetaljer utvecklar den svenska industrikänslan. Se [berättelse, klassförmågor och grafik](docs/STORY.md) för spelregler och begränsningar.
+
+![Aaltohuset med uppdaterat höstljus och markmaterial](docs/images/aalto-v06.png)

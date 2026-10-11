@@ -1,3 +1,5 @@
+import { hasSkill, classWeaponStats, tacticalAction } from './class-skills.js';
+import { storyAction, tickStory } from './story.js';
 import { newArt, artistAction, restoreArt } from './artist.js';
 import {
   applyMods,
@@ -137,7 +139,9 @@ export function makeWeapon(id, kind = 'rifle', rarity = 0, level = 1) {
   };
 }
 export function maxHp(p) {
-  return CLASSES[p.classId].hp + (p.level - 1) * 8 + p.vitality * 12;
+  return (
+    CLASSES[p.classId].hp + (p.level - 1) * 8 + p.vitality * 12 + (hasSkill(p, 'furnace') ? 25 : 0)
+  );
 }
 export function xpNeeded(p) {
   return p.level * 100;
@@ -153,7 +157,7 @@ export function weaponStats(p) {
     if (p.classId === 'skogsvandrare' && p.weapon.kind === 'scout') stats.damage *= 1.5;
   }
   if (p.weapon.kind === 'lmg' && p.skills.includes('heavy_training')) stats.reload *= 0.85;
-  return stats;
+  return classWeaponStats(p, stats);
 }
 export function createWorld({ pvp = false, random = Math.random } = {}) {
   const w = {
@@ -219,6 +223,10 @@ export function addPlayer(w, id, name, classId) {
     ...newEconomy(),
     ...newArt(),
     skills: [],
+    tacticalCooldown: 0,
+    tacticalFlash: 0,
+    riverHaste: 0,
+    triage: 0,
     specialCooldown: 0,
     specialBuff: 0,
     camouflage: 0,
@@ -250,6 +258,7 @@ export function addPlayer(w, id, name, classId) {
     armor: 0,
     crafted: 0,
     campaign: newCampaign(),
+    storyChannel: null,
     weapon,
     inventory: [weapon],
     ammo: WEAPONS[weapon.kind].mag,
@@ -302,6 +311,10 @@ function questCheck(w, p) {
 }
 function hurt(w, target, damage) {
   if (target.hp <= 0 || (target.classId && inSanctuary(target))) return;
+  if (target.storyChannel && damage > 0) {
+    target.storyChannel = null;
+    notice(w, target, 'Arbetet avbröts av skada. Säkra platsen och tryck E igen.');
+  }
   const armor = target.classId === 'stalvakt' && target.buff > 0 ? 0.5 : 1;
   target.hp = Math.max(
     0,
@@ -498,6 +511,8 @@ export function act(w, id, action) {
     return;
   }
   if (p.hp <= 0) return;
+  if (tacticalAction(w, p, action, { notice, damageEnemy })) return;
+  if (storyAction(w, p, action, notice)) return;
   if (artistAction(w, p, action, notice)) return;
   if (economyAction(w, p, action, { notice, makeWeapon, rewardXp, maxHp, weaponStats, questCheck }))
     return;
@@ -531,7 +546,7 @@ export function act(w, id, action) {
       vz: Math.cos(p.aim) * 14,
       vy: 7 + Math.sin(p.pitch) * 8,
       fuse: 2.2,
-      damage: p.classId === 'kopparslagare' ? 120 : 95,
+      damage: (p.classId === 'kopparslagare' ? 120 : 95) * (hasSkill(p, 'blastcraft') ? 1.25 : 1),
     });
     return;
   }
@@ -562,7 +577,11 @@ export function act(w, id, action) {
       const status = campaignStatus(p),
         contract = CONTRACTS[p.campaign.step];
       if (status.complete)
-        return notice(w, p, 'Du har fullföljt skiftets alla tre uppdrag. Avesta tackar dig.');
+        return notice(
+          w,
+          p,
+          'Kopparhjärta är återtaget. Avesta har fått en morgondag. Läs slutet i journalen (J).',
+        );
       if (!p.campaign.active) {
         p.campaign.active = true;
         return notice(w, p, `Nytt uppdrag: ${contract.title}.`);
@@ -571,7 +590,11 @@ export function act(w, id, action) {
       p.campaign = { ...newCampaign(), step: p.campaign.step + 1 };
       p.scrap += contract.scrap;
       rewardXp(w, p, contract.xp);
-      return notice(w, p, `Maja: Tack, dalmas! +${contract.xp} XP och ${contract.scrap} skrot.`);
+      return notice(
+        w,
+        p,
+        `Kapitel klart! +${contract.xp} XP och ${contract.scrap} skrot. Majas svar finns i journalen (J).`,
+      );
     }
     if (action.type === 'craft') {
       if (typeof action.kind !== 'string' || !Object.hasOwn(RECIPES, action.kind)) return;
@@ -615,7 +638,8 @@ export function act(w, id, action) {
           !clearShot(p, ally)
         )
           continue;
-        if (p.classId === 'faltvardare') ally.hp = Math.min(maxHp(ally), ally.hp + 55);
+        if (p.classId === 'faltvardare')
+          ally.hp = Math.min(maxHp(ally), ally.hp + 55 + (hasSkill(p, 'sterile') ? 20 : 0));
         else ally.protection = 6;
       }
     }
@@ -687,6 +711,9 @@ export function tick(w, dt) {
       'grenadeCooldown',
       'protection',
       'intel',
+      'tacticalCooldown',
+      'tacticalFlash',
+      'riverHaste',
       'specialCooldown',
       'specialBuff',
       'camouflage',
@@ -698,7 +725,14 @@ export function tick(w, dt) {
       p.reload = Math.max(0, p.reload - dt);
       if (p.reload === 0) p.ammo = weaponStats(p).mag;
     }
-    if (p.hp <= 0) continue;
+    if (p.hp <= 0) {
+      p.triage = 0;
+      continue;
+    }
+    if (p.triage > 0) {
+      p.hp = Math.min(maxHp(p), p.hp + 6 * Math.min(dt, p.triage));
+      p.triage = Math.max(0, p.triage - dt);
+    }
     const input = cleanInput(p.input);
     p.aim = input.aim;
     p.pitch = input.pitch;
@@ -722,8 +756,8 @@ export function tick(w, dt) {
             : p.sprinting
               ? p.classId === 'stalvakt'
                 ? -20
-                : -24
-              : 18) *
+                : -24 * (hasSkill(p, 'riverstride') ? 0.75 : 1)
+              : 18 * (hasSkill(p, 'softstep') ? 1.25 : 1)) *
             dt,
       ),
     );
@@ -733,13 +767,20 @@ export function tick(w, dt) {
       input.z,
       CLASSES[p.classId].speed *
         weaponStats(p).move *
+        (p.riverHaste > 0 ? 1.2 : 1) *
         (p.skills.includes('fieldcraft') ? 1.1 : 1) *
         (p.specialBuff > 0 && p.classId === 'alvvakt' && p.skills.includes('assault_ability')
           ? 1.6
           : 1) *
         travelFactor(p.x, p.z, input.x, input.z) *
         (p.crouch ? 0.55 : p.sprinting ? 1.4 : 1) *
-        (p.ads ? (p.classId === 'alvvakt' ? 0.85 : 0.7) : 1) *
+        (p.ads
+          ? hasSkill(p, 'bridgeaim') && p.weapon.kind === 'smg'
+            ? 1
+            : p.classId === 'alvvakt'
+              ? 0.85
+              : 0.7
+          : 1) *
         (p.classId === 'skogsvandrare' && p.buff > 0 ? 1.6 : 1) *
         dt,
     );
@@ -751,6 +792,11 @@ export function tick(w, dt) {
   for (const e of w.enemies) {
     if (e.hp <= 0) continue;
     e.cooldown -= dt;
+    if (e.stagger > 0) {
+      e.stagger = Math.max(0, e.stagger - dt);
+      e.phase = 'stagger';
+      continue;
+    }
     const targets = Object.values(w.players)
       .filter((p) => p.hp > 0 && !inSanctuary(p))
       .sort((a, b) => Math.hypot(a.x - e.x, a.z - e.z) - Math.hypot(b.x - e.x, b.z - e.z));
@@ -760,11 +806,14 @@ export function tick(w, dt) {
     const aggroRange = boss ? 100 : 75;
     const candidates = targets.filter(
       (p) =>
-        Math.hypot(p.x - e.x, p.z - e.z) < (p.camouflage > 0 ? 14 : aggroRange) &&
+        Math.hypot(p.x - e.x, p.z - e.z) <
+          (p.camouflage > 0 ? 14 : aggroRange * (hasSkill(p, 'softstep') && p.crouch ? 0.6 : 1)) &&
         ((w.time < e.alertUntil && e.targetId === p.id) || clearShot(e, p)),
     );
     const p =
-      (w.time < e.alertUntil && candidates.find((p) => p.id === e.targetId)) || candidates[0];
+      (w.time < e.tauntUntil && candidates.find((p) => p.id === e.tauntTarget)) ||
+      (w.time < e.alertUntil && candidates.find((p) => p.id === e.targetId)) ||
+      candidates[0];
     if (e.windup > 0) {
       e.windup -= dt;
       if (e.windup <= 0) {
@@ -887,6 +936,7 @@ export function tick(w, dt) {
   for (const r of w.respawns.filter((r) => r.time <= w.time))
     spawnEnemy(w, r.x, r.z, r.type, r.name, r.title).landmark = r.landmark;
   w.respawns = w.respawns.filter((r) => r.time > w.time);
+  for (const p of Object.values(w.players)) tickStory(w, p, dt, notice);
 }
 export function snapshot(w) {
   return {

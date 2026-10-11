@@ -50,7 +50,7 @@ Stålvakt och Bruksingenjör kan använda kulspruta och rustning 3 direkt. Övri
 
 Gamla offlineprofiler version 1 läses fortfarande. Nya fält får tomma standardvärden. Material, valuta, modifikationer, sökta lådor, uppdrag och talangval sparas per klass. Okända delar och ogiltiga talangkedjor filtreras vid inläsning. Befintliga sparningar har inget retroaktivt materiallager; bärga, handla eller använd AdminL för utveckling.
 
-Servern utför samma handlingar och kontrollerar avstånd, ägande, kompatibilitet, kapacitet, priser, recept och talangpoäng. Offlineprofiler laddas inte upp till multiplayer. Onlineframsteg gäller fortsatt bara den aktuella sessionen. AdminL kan nu även skapa material/vapendelar och ändra brukskronor. Klient och server ska uppdateras tillsammans till 0.5.
+Servern utför samma handlingar och kontrollerar avstånd, ägande, kompatibilitet, kapacitet, priser, recept och talangpoäng. Offlineprofiler laddas inte upp till multiplayer. Onlineframsteg gäller fortsatt bara den aktuella sessionen. AdminL kan nu även skapa material/vapendelar och ändra brukskronor. Klient och server ska uppdateras tillsammans till 0.6.
 
 ## Anders Delbom och sprayfärg
 
@@ -62,3 +62,7 @@ Anders dialog länkar till en Booli-sökning efter **Odlargränd 16, Avesta**. B
 
 ![Aaltohusets tolkade fasad och spelbara entré](images/aalto-v05.png)
 ![Anders tillfälliga ateljé med egna teckningar och sprayburkar](images/artist-v05.png)
+
+## Fler klasstalanger i 0.6
+
+Två nya passiva talanger och en taktisk förmåga på **X** per klass kompletterar stöd-/anfallsgrenarna. Regler, poängkrav och exakta effekter finns i [Kopparhjärta och klasser](STORY.md). Rena förband höjer fältförbandets läkning till 95; Kretsletare påverkar bärgade elektronik-/kopparmaterial, inte köpta föremål.

@@ -51,3 +51,9 @@ Sju fotografier granskades direkt i konversationen: tre av Verket, tre av Aaltoh
 Mått, orientering, detaljer och proportioner är fortfarande spelmässiga tolkningar inom kartans befintliga utrymme. Fotografierna ersätter inte inmätning eller planritningar. Bilder på fler entréer och interiörer kan förbättra nästa modellpass. Street View har inte använts i detta pass.
 
 Anders Delboms konstnärsfigur och två stafflimotiv är egenbyggda och stiliserade; inga porträtt eller konstverk från en verklig person används. Axel Johnsons väg är källbelagd i det sparade OSM-underlaget (way/56226492), men husnummer 117B är inte verifierat. Därför används en markerad tillfällig ateljé tills en adresspunkt finns.
+
+## Grafisk bearbetning i 0.6
+
+Egenritade björk- och gräsutskärningar, höstljus, himmelsreflektioner, materialrelief och rörelse i gräs/vatten kompletterar de befintliga modellerna. Referensen Generation Zero används för riktning mot svensk industrimiljö och atmosfär, utan att kopiera spelets tillgångar eller berättelse.
+
+Ägaren tipsade om kommunkartan https://karta-avesta.vdmb.se/ den 9 oktober 2026. Försöket nådde inte karttjänsten: miljöns proxy avvisade HTTPS CONNECT med 403. Kartans innehåll har därför inte granskats eller använts för att verifiera nya byggnader eller höjder. Befintliga referenser och källmarkeringar gäller fortfarande.

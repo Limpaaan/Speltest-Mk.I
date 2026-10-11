@@ -60,6 +60,43 @@ export function surfaces() {
       ctx.fillStyle = `rgba(${shade},${shade},${shade},${random() * 0.14})`;
       ctx.fillRect(random() * 256, random() * 256, random() * 3 + 0.4, random() * 3 + 0.4);
     }
+    if (kind === 'soil') {
+      for (let i = 0; i < 180; i++) {
+        const x = random() * 256,
+          y = random() * 256;
+        ctx.fillStyle = ['#9b94723a', '#3a4c353d', '#bdac8333', '#202b2338'][i % 4];
+        ctx.beginPath();
+        ctx.ellipse(x, y, 3 + random() * 12, 2 + random() * 8, random() * 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#3b34284a';
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + random() * 14, y + random() * 12);
+        ctx.stroke();
+      }
+    }
+    if (kind === 'asphalt') {
+      ctx.strokeStyle = '#171d1c';
+      ctx.lineWidth = 1.1;
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        let x = random() * 256,
+          y = 0;
+        ctx.moveTo(x, y);
+        while (y < 256) {
+          x += (random() - 0.5) * 24;
+          y += 9 + random() * 22;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+    if (kind === 'birch')
+      for (let i = 0; i < 80; i++) {
+        ctx.fillStyle = i % 3 ? '#434940' : '#83847b';
+        ctx.fillRect(random() * 256, random() * 256, 4 + random() * 30, 1 + random() * 4);
+      }
     if (kind === 'brick')
       for (let y = 0; y < 256; y += 32) {
         ctx.fillStyle = '#484a41';
@@ -110,7 +147,14 @@ export function surfaces() {
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.anisotropy = 4;
-    return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.94 });
+    const relief = texture.clone();
+    relief.colorSpace = THREE.NoColorSpace;
+    return new THREE.MeshStandardMaterial({
+      map: texture,
+      bumpMap: relief,
+      bumpScale: ['brick', 'slag'].includes(kind) ? 0.1 : 0.035,
+      roughness: kind === 'asphalt' ? 0.72 : 0.94,
+    });
   };
   return {
     slagStone: make('#59574b', 'slag'),
@@ -129,7 +173,7 @@ export function surfaces() {
       metalness: 0.35,
     }),
     soil: make('#64604b', 'soil'),
-    asphalt: make('#454b45', 'soil'),
+    asphalt: make('#414744', 'asphalt'),
     concrete: make('#9d9b85', 'wall'),
     plaster: make('#c4c3af', 'wall'),
     brick: make('#895b45', 'brick'),
@@ -140,6 +184,7 @@ export function surfaces() {
     glass: new THREE.MeshStandardMaterial({ color: '#253f3e', roughness: 0.33, metalness: 0.45 }),
     water: new THREE.MeshStandardMaterial({ color: '#456768', roughness: 0.24, metalness: 0.35 }),
     leaf: new THREE.MeshStandardMaterial({ color: '#4d5c40', roughness: 1 }),
+    birch: make('#b9b9a8', 'birch'),
     bark: make('#5f5746', 'wood'),
   };
 }

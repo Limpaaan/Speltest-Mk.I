@@ -2,33 +2,8 @@ import { ARTIST } from './artist.js';
 import { MAP, walkableNear } from './map.js';
 
 export const CAMP = { x: MAP.spawn.x + 4, z: MAP.spawn.z - 2, name: 'Maja – skiftledare' };
-export const CONTRACTS = [
-  {
-    id: 'kopparbud',
-    title: 'Bud till Koppardalen',
-    text: 'Vi håller ihop här. Rekognoscera Koppardalen och kom tillbaka med besked om vägen längs älven.',
-    place: 'koppar',
-    xp: 70,
-    scrap: 40,
-  },
-  {
-    id: 'slagg',
-    title: 'Tänd brukets hopp',
-    text: 'Järnsundskompaniet håller Verket. Besegra fem soldater och Slaggjarlen under detta uppdrag. Återvänd sedan till mig.',
-    kills: 5,
-    boss: 'verket',
-    xp: 180,
-    scrap: 90,
-  },
-  {
-    id: 'horse',
-    title: 'Hästen ska stå fri',
-    text: 'Dalahästen är vår samlingssymbol. Besegra Ryttmästare Mörk och återvänd. De ska veta att Avesta står kvar.',
-    boss: 'horse',
-    xp: 250,
-    scrap: 130,
-  },
-];
+import { CONTRACTS, STORY_SITES } from './story.js';
+export { CONTRACTS } from './story.js';
 export const RECIPES = {
   rifle: { name: 'Bruksbössan', cost: 60 },
   shotgun: { name: 'Slaggkastaren', cost: 80 },
@@ -54,10 +29,20 @@ export function campaignStatus(p) {
       complete: true,
       ready: false,
       title: 'Avesta står kvar',
-      progress: 'Alla tre skiftuppdrag är klara.',
+      progress: 'Kopparhjärta är återtaget. Läs slutet i journalen (J).',
     };
   const parts = [];
   if (contract.place) parts.push(c.visited ? 'Koppardalen rekognoscerat' : 'Besök Koppardalen');
+  if (contract.site)
+    parts.push(
+      c.visited
+        ? 'Arbetet slutfört · läs fyndet i J'
+        : `${STORY_SITES[contract.site].name} · E för att arbeta`,
+    );
+  if (p.storyChannel)
+    parts.push(
+      `${Math.floor(p.storyChannel.elapsed)}/${STORY_SITES[contract.site]?.seconds || 0} s`,
+    );
   if (contract.kills) parts.push(`${Math.min(c.kills, contract.kills)}/${contract.kills} soldater`);
   if (contract.boss)
     parts.push(
@@ -73,7 +58,7 @@ export function campaignStatus(p) {
     progress: c.active ? parts.join(' · ') : 'Prata med Maja vid samlingsplatsen',
     ready:
       c.active &&
-      (!contract.place || c.visited) &&
+      (!(contract.place || contract.site) || c.visited) &&
       (!contract.kills || c.kills >= contract.kills) &&
       (!contract.boss || c.boss),
   };
@@ -88,7 +73,7 @@ export function trackCampaign(p, event, enemy) {
   }
   if (event === 'kill') {
     if (enemy.type !== 'boss') c.kills = Math.min(999, c.kills + 1);
-    if (contract.boss && enemy.landmark === contract.boss) c.boss = true;
+    if (enemy.type === 'boss' && contract.boss && enemy.landmark === contract.boss) c.boss = true;
   }
 }
 export function restoreCampaign(raw) {

@@ -679,3 +679,40 @@ body.aiming #crosshair {
   white-space: normal;
   max-width: 320px;
 }
+
+/* Field notes keep long story text readable without obscuring the game HUD. */
+#journal-dialog {
+  max-width: 780px;
+}
+#journal-content p,
+#contract-story,
+.story-recap {
+  line-height: 1.75;
+  max-width: 68ch;
+}
+.story-chapter {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+}
+.story-chapter summary {
+  cursor: pointer;
+  color: var(--gold);
+  font-size: 1.1rem;
+}
+.story-chapter small {
+  display: block;
+  margin-top: 16px;
+  color: var(--muted);
+}
+.story-recap {
+  border-left: 2px solid var(--gold);
+  padding-left: 16px;
+  color: #b7c7bf;
+}
+.story-recap:empty {
+  display: none;
+}
+.controls {
+  gap: 12px;
+  flex-wrap: wrap;
+}

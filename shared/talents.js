@@ -1,3 +1,4 @@
+import { classNodes } from './class-skills.js';
 export const SPECIALTIES = {
   stalvakt: ['rifle', 'lmg'],
   skogsvandrare: ['scout'],
@@ -74,6 +75,7 @@ export const BRANCH_ABILITIES = {
 export function talentTree(classId) {
   return [
     ...common,
+    ...classNodes(classId),
     ...BRANCH_ABILITIES[classId].map(([name, text], i) => ({
       id: i ? 'assault_ability' : 'support_ability',
       name,

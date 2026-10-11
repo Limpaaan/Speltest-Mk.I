@@ -1,3 +1,6 @@
+import { CLASS_SKILLS } from '../shared/class-skills.js';
+import { nearbyStory, EPILOGUE } from '../shared/story.js';
+import { renderJournal, objectiveText } from './journal.js';
 import { PAINTS } from '../shared/artist.js';
 import { artistPanel } from './artist-ui.js';
 import { equipmentPanel, marketPanel } from './equipment-ui.js';
@@ -123,7 +126,7 @@ function renderClasses() {
   }
   const c = CLASSES[selected];
   $('class-detail').textContent =
-    `${c.subtitle}. ${c.description} Fart ${c.speed} · ${c.hp} hälsa. Specialvapen: ${SPECIALTIES[selected].map((k) => WEAPONS[k].name).join(', ')} (snabbare omladdning). ${['stalvakt', 'bruksingenjor'].includes(selected) ? 'Tung klass: kulspruta och rustning 3 från början.' : 'Kulspruta och rustning 3 kräver talanger.'}`;
+    `${c.subtitle}. ${c.description} Taktisk talang: ${CLASS_SKILLS[selected][2][0]}. Fart ${c.speed} · ${c.hp} hälsa. Specialvapen: ${SPECIALTIES[selected].map((k) => WEAPONS[k].name).join(', ')} (snabbare omladdning). ${['stalvakt', 'bruksingenjor'].includes(selected) ? 'Tung klass: kulspruta och rustning 3 från början.' : 'Kulspruta och rustning 3 kräver talanger.'}`;
 }
 renderClasses();
 try {
@@ -287,6 +290,7 @@ function openDialog(dialog) {
   if (dialog === $('inventory-dialog')) renderInventory();
   if (dialog === $('admin-dialog')) renderAdmin(true);
   if (dialog === $('camp-dialog')) renderCamp();
+  if (dialog === $('journal-dialog')) renderJournal($('journal-content'), state.players[myId]);
 }
 function pause() {
   if (!mode) return;
@@ -367,6 +371,11 @@ window.addEventListener('keydown', (e) => {
     }
     return;
   }
+  if (k === 'j') {
+    if ($('journal-dialog').open) $('journal-dialog').close();
+    else if (!paused()) openDialog($('journal-dialog'));
+    return;
+  }
   if (k === 'i') {
     if ($('inventory-dialog').open) $('inventory-dialog').close();
     else if (!paused()) openDialog($('inventory-dialog'));
@@ -376,6 +385,7 @@ window.addEventListener('keydown', (e) => {
   keys.add(k);
   if (k === 'c') crouch = !crouch;
   if (k === 'b') action({ type: 'spray' });
+  if (k === 'x') action({ type: 'tactical' });
   if (k === 'z') action({ type: 'special' });
   if (k === 'l') action({ type: 'flashlight' });
   if (k === 'q') action({ type: 'ability' });
@@ -383,6 +393,7 @@ window.addEventListener('keydown', (e) => {
     const npc = nearbyNpc(state.players[myId]);
     if (npc) openNpc(npc);
     else if (atCamp(state.players[myId])) openDialog($('camp-dialog'));
+    else if (nearbyStory(state.players[myId])) action({ type: 'story' });
     else if (nearbyCache(state.players[myId])) action({ type: 'search' });
     else action({ type: 'loot' });
   }
@@ -538,6 +549,7 @@ function updateHUD() {
   $('admin-open').hidden = !isAdmin(p);
   if ($('admin-dialog').open) renderAdmin();
   if ($('camp-dialog').open) renderCamp();
+  if ($('journal-dialog').open) renderJournal($('journal-content'), p);
   if ($('npc-dialog').open) {
     $('npc-message').textContent = state.time < p.messageUntil ? p.message : '';
     if (!$('npc-market').hidden) marketPanel($('npc-market'), p, action);
@@ -547,7 +559,7 @@ function updateHUD() {
   $('campaign-title').textContent = contract.title;
   $('campaign-progress').textContent = contract.ready
     ? 'Återvänd till Maja för din belöning'
-    : contract.progress;
+    : contract.progress + objectiveText(p);
   $('player-class').textContent = c.name.toUpperCase();
   $('level').textContent = `NIVÅ ${p.level}`;
   $('health-fill').style.width = `${(p.hp / maxHp(p)) * 100}%`;
@@ -557,6 +569,9 @@ function updateHUD() {
   $('ability-name').textContent = c.ability;
   $('ability-cooldown').textContent =
     (p.abilityCooldown > 0 ? `${Math.ceil(p.abilityCooldown)} s` : 'REDO') +
+    (p.skills.includes('class_utility')
+      ? ` · X ${CLASS_SKILLS[p.classId][2][0]} ${p.tacticalCooldown > 0 ? Math.ceil(p.tacticalCooldown) + ' s' : 'REDO'}`
+      : '') +
     (p.skills.includes('support_ability') || p.skills.includes('assault_ability')
       ? ` · Z ${BRANCH_ABILITIES[p.classId][p.skills.includes('assault_ability') ? 1 : 0][0]} ${p.specialCooldown > 0 ? Math.ceil(p.specialCooldown) + ' s' : 'REDO'}`
       : '');
@@ -580,13 +595,15 @@ function updateHUD() {
     ? `E · Prata med ${npc.name}`
     : atCamp(p)
       ? 'E · Prata med Maja / uppdrag och verkstad'
-      : nearbyCache(p)
-        ? `E · Sök ${nearbyCache(p).name}`
-        : inSanctuary(p)
-          ? 'WASD · Lämna samlingsplatsen för att inleda strid'
-          : nearby
-            ? `E · Bärga ${lootName(nearby)}`
-            : '';
+      : nearbyStory(p)
+        ? `E · ${nearbyStory(p).name}${p.storyChannel ? ' · arbete pågår' : ''}`
+        : nearbyCache(p)
+          ? `E · Sök ${nearbyCache(p).name}`
+          : inSanctuary(p)
+            ? 'WASD · Lämna samlingsplatsen för att inleda strid'
+            : nearby
+              ? `E · Bärga ${lootName(nearby)}`
+              : '';
   const place = [...MAP.places].sort(
     (a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z),
   )[0];
@@ -785,9 +802,9 @@ function renderCamp() {
   const status = campaignStatus(p),
     contract = CONTRACTS[p.campaign.step];
   $('contract-title').textContent = status.title;
-  $('contract-story').textContent = contract
-    ? contract.text
-    : 'Du har fullföljt skiftets tre uppdrag. Verkstaden står fortfarande öppen.';
+  $('contract-previous').textContent =
+    p.campaign.step > 0 ? CONTRACTS[p.campaign.step - 1].debrief : '';
+  $('contract-story').textContent = contract ? contract.text : EPILOGUE;
   $('contract-progress').textContent =
     status.progress + (contract ? ` · Belöning: ${contract.xp} XP, ${contract.scrap} skrot` : '');
   $('contract-action').textContent = status.complete

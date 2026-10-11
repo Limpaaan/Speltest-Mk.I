@@ -68,7 +68,7 @@ export function equipmentPanel(root, p, action) {
     node('h3', 'Talangträd'),
     node(
       'p',
-      `Specialvapen: ${SPECIALTIES[p.classId].map((k) => WEAPONS[k].name).join(', ')} (10% snabbare omladdning). Rustningsgräns: ${armorLimit(p)}. Välj stöd ELLER anfall; grenen låses. Z använder den upplåsta specialförmågan.`,
+      `Specialvapen: ${SPECIALTIES[p.classId].map((k) => WEAPONS[k].name).join(', ')} (10% snabbare omladdning). Rustningsgräns: ${armorLimit(p)}. Välj stöd ELLER anfall; grenen låses. Z använder grenens specialförmåga. X använder klassens taktiska förmåga; den kan kombineras med båda grenarna. Taktik har 28 s återhämtning.`,
     ),
   );
   for (const t of talentTree(p.classId)) {
