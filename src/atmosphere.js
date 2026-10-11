@@ -1,3 +1,4 @@
+import { inParking } from '../shared/sites.js';
 import * as THREE from 'three';
 import { MAP, groundHeight, canStand, waterAt, segmentDistance } from '../shared/map.js';
 import { STORY_SITES, campaignTarget } from '../shared/story.js';
@@ -15,8 +16,10 @@ export function foliageMaterial(kind) {
     random = rng(kind === 'birch' ? 411 : 901);
   if (kind === 'birch') {
     for (let i = 0; i < 95; i++) {
-      const y = 90 + random() * 280,
-        x = 128 + (random() - 0.5) * 210;
+      const angle = random() * Math.PI * 2,
+        radius = Math.sqrt(random());
+      const y = 245 + Math.sin(angle) * radius * 170,
+        x = 128 + Math.cos(angle) * radius * 90;
       ctx.strokeStyle = '#625a41';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -91,7 +94,13 @@ export class Atmosphere {
       emissiveIntensity: 1.5,
     });
     this.sites();
+    this.lampPositions = [];
     this.roadside();
+    this.streetLights = Array.from({ length: 6 }, () => {
+      const light = new THREE.PointLight('#ffd4a0', 0, 18, 2);
+      view.scene.add(light);
+      return light;
+    });
     this.groundCover();
     const light = new THREE.PointLight('#ffbb77', 24, 14, 2);
     light.position.set(
@@ -127,6 +136,7 @@ export class Atmosphere {
       emissive: '#e6b877',
       emissiveIntensity: 0.65,
     });
+    this.bulb = bulb;
     let count = 0;
     for (const road of MAP.roads) {
       if (!road.name || road.bridge || ++count % 7) continue;
@@ -137,7 +147,8 @@ export class Atmosphere {
       if (length < 10) continue;
       const x = (a[0] + b[0]) / 2 + (dz / length) * 5,
         z = (a[1] + b[1]) / 2 - (dx / length) * 5;
-      if (!canStand(x, z) || waterAt(x, z)) continue;
+      if (!canStand(x, z) || inParking(MAP.parking, x, z, 1) || waterAt(x, z)) continue;
+      this.lampPositions.push(new THREE.Vector3(x, groundHeight(x, z) + 4.15, z));
       const y = groundHeight(x, z),
         yaw = Math.atan2(dx, dz);
       v.box(x, y + 2.2, z, 0.08, 4.4, 0.08, v.s.rust);
@@ -146,6 +157,18 @@ export class Atmosphere {
       // Small street furniture, never a new invisible barrier across a road.
       v.sign('SKYDDSRUM →', x, y + 1.9, z + 0.08, 1.2, yaw);
     }
+  }
+  setNight(night, camera) {
+    this.bulb.emissiveIntensity = 0.06 + night * 2;
+    const low = this.view.softwareRenderer || this.view.settings?.graphics === 'low';
+    const nearest = this.lampPositions
+      .filter((p) => p.distanceToSquared(camera) < 70 * 70)
+      .sort((a, b) => a.distanceToSquared(camera) - b.distanceToSquared(camera));
+    this.streetLights.forEach((light, i) => {
+      light.intensity = nearest[i] && i < (low ? 2 : 6) ? night * 100 : 0;
+      light.visible = light.intensity > 0;
+      if (nearest[i]) light.position.copy(nearest[i]);
+    });
   }
   sway(mat, amount) {
     mat.onBeforeCompile = (shader) => {
@@ -168,10 +191,14 @@ export class Atmosphere {
       points = [];
     for (let i = 0; i < 8500; i++) {
       const tree = MAP.trees[i % MAP.trees.length];
-      const x = tree.x + (random() - 0.5) * 24,
-        z = tree.z + (random() - 0.5) * 24;
+      const place = MAP.places[i % MAP.places.length];
+      const centre = i % 3 === 0 ? place : tree,
+        spread = i % 3 === 0 ? 70 : 24;
+      const x = centre.x + (random() - 0.5) * spread,
+        z = centre.z + (random() - 0.5) * spread;
       if (
         !canStand(x, z) ||
+        inParking(MAP.parking, x, z, 1) ||
         waterAt(x, z) ||
         MAP.roads.some((r) => segmentDistance(x, z, ...r.points) < 3.8)
       )

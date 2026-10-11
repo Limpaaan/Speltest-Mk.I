@@ -151,7 +151,9 @@ export function surfaces() {
     relief.colorSpace = THREE.NoColorSpace;
     return new THREE.MeshStandardMaterial({
       map: texture,
-      bumpMap: relief,
+      // Terrain already has geometric relief. Bump derivatives on its large,
+      // batched triangles can produce black patches on software WebGL drivers.
+      bumpMap: kind === 'soil' ? null : relief,
       bumpScale: ['brick', 'slag'].includes(kind) ? 0.1 : 0.035,
       roughness: kind === 'asphalt' ? 0.72 : 0.94,
     });

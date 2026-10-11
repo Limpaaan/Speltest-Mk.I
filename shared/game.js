@@ -1,3 +1,4 @@
+import { startGesture } from './gestures.js';
 import { hasSkill, classWeaponStats, tacticalAction } from './class-skills.js';
 import { storyAction, tickStory } from './story.js';
 import { newArt, artistAction, restoreArt } from './artist.js';
@@ -162,6 +163,7 @@ export function weaponStats(p) {
 export function createWorld({ pvp = false, random = Math.random } = {}) {
   const w = {
     time: 0,
+    dayTime: 0,
     players: {},
     enemies: [],
     loot: [],
@@ -559,6 +561,7 @@ export function act(w, id, action) {
         return notice(w, p, 'Du behöver 20 skrot och plats för granater.');
       p.scrap -= 20;
       p.grenades = Math.min(6, p.grenades + 3);
+      startGesture(w, p, 'trade', npc);
       return notice(w, p, 'Torsten: Ta hand om Avesta. Granater påfyllda.');
     }
     if (npc.service === 'treatment') {
@@ -566,6 +569,7 @@ export function act(w, id, action) {
         return notice(w, p, 'Behandling kräver skador och 10 skrot.');
       p.scrap -= 10;
       p.hp = maxHp(p);
+      startGesture(w, p, 'trade', npc);
       return notice(w, p, 'Liv: Du är på benen igen.');
     }
     p.intel = 120;
@@ -657,6 +661,7 @@ export function act(w, id, action) {
     if (item) {
       if (!collect(p, item)) return notice(w, p, 'Packningen är full.');
       p.pickups++;
+      startGesture(w, p, 'pickup', item);
       p.scrap += 5;
       w.loot = w.loot.filter((l) => l.id !== item.id);
       questCheck(w, p);
@@ -701,8 +706,18 @@ export function act(w, id, action) {
 export function tick(w, dt) {
   dt = Math.max(0, Math.min(0.1, finite(dt)));
   w.time += dt;
+  w.dayTime = ((w.dayTime || 0) + dt) % 2400;
   w.shots = w.shots.filter((s) => w.time - s.time < 0.16);
   for (const p of Object.values(w.players)) {
+    if (
+      p.gesture &&
+      (w.time >= p.gesture.start + p.gesture.duration ||
+        p.hp <= 0 ||
+        p.input.fire ||
+        p.input.x ||
+        p.input.z)
+    )
+      p.gesture = null;
     for (const key of [
       'cooldown',
       'paintCooldown',
@@ -941,6 +956,7 @@ export function tick(w, dt) {
 export function snapshot(w) {
   return {
     time: w.time,
+    dayTime: w.dayTime,
     pvp: w.pvp,
     players: Object.fromEntries(Object.entries(w.players).map(([id, { input, ...p }]) => [id, p])),
     enemies: w.enemies,

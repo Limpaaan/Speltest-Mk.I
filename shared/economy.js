@@ -1,3 +1,4 @@
+import { startGesture } from './gestures.js';
 import { hasSkill } from './class-skills.js';
 import {
   MATERIALS,
@@ -15,7 +16,7 @@ import {
 import { WEAPONS } from './weapons.js';
 import { MAP, walkableNear, clearShot } from './map.js';
 import { INTERIOR_CACHES } from './interiors.js';
-import { NPCS, atCamp } from './progression.js';
+import { NPCS, CAMP, atCamp } from './progression.js';
 export const CACHES = [
   ...INTERIOR_CACHES,
   ...MAP.places.map((p) => ({
@@ -92,6 +93,7 @@ export function economyAction(
       say('Packningen är full.');
       return true;
     }
+    startGesture(w, p, 'pickup', c);
     p.searched.push(c.id);
     p.pickups++;
     questCheck(w, p);
@@ -137,6 +139,7 @@ export function economyAction(
       p.ammo = Math.min(p.ammo, weaponStats(p).mag);
       p.flashlight = false;
     }
+    startGesture(w, p, 'use');
     say('Vapnet uppdaterat.');
     return true;
   }
@@ -148,6 +151,7 @@ export function economyAction(
     } else if (a.key === 'filter') p.protection = Math.max(p.protection, 25);
     else p.protection = Math.max(p.protection, 40);
     p.supplies[a.key]--;
+    startGesture(w, p, 'use');
     say('Förbrukningsvara använd.');
     return true;
   }
@@ -156,6 +160,7 @@ export function economyAction(
     say('Besök Maja eller Torsten för handel och tillverkning.');
     return true;
   }
+  const trader = atCamp(p) ? { ...CAMP, id: 'maja' } : NPCS.find((n) => n.id === 'torsten');
   const category = a.category,
     key = a.key;
   const catalog = {
@@ -184,6 +189,7 @@ export function economyAction(
       p.inventory = p.inventory.filter((i) => i !== item);
       p.credits += Math.floor(price * 0.35) * (item.rarity + 1);
     } else return true;
+    startGesture(w, p, 'trade', trader);
     say('Sålt för brukskronor.');
     return true;
   }
@@ -225,6 +231,7 @@ export function economyAction(
     else if (key === 'electronics') p.materials.electronics++;
     else p.supplies[key]++;
   }
+  startGesture(w, p, 'trade', trader);
   say(`${definition.name}: ${a.type === 'buy' ? 'köpt' : 'tillverkad'}.`);
   return true;
 }

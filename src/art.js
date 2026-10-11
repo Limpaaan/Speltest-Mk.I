@@ -1,3 +1,4 @@
+import { createHuman } from './humans.js';
 import * as THREE from 'three';
 import { ARTIST, PAINTS } from '../shared/artist.js';
 import { groundHeight } from '../shared/map.js';
@@ -72,23 +73,24 @@ export function buildArtist(view) {
   const group = new THREE.Group(),
     s = view.s,
     box = (x, y, z, w, h, d, mat = s.wood) => view.part(group, view.boxGeo, mat, x, y, z, w, h, d);
-  const sphere = new THREE.SphereGeometry(1, 16, 12),
-    skin = new THREE.MeshStandardMaterial({ color: '#ba9d7f', roughness: 1 });
-  box(0, 1.08, 0, 0.48, 0.65, 0.28, s.aaltoBlue);
-  box(0, 1.05, 0.16, 0.43, 0.6, 0.035, s.ivory);
-  view.part(group, sphere, skin, 0, 1.65, 0, 0.16, 0.19, 0.16);
-  view.part(group, sphere, s.metal, -0.035, 1.81, 0, 0.22, 0.06, 0.19);
-  for (const side of [-1, 1]) {
-    box(side * 0.13, 0.43, 0, 0.17, 0.8, 0.18, s.metal);
-    box(side * 0.13, 0.08, 0.08, 0.2, 0.15, 0.32, s.metal);
-  }
-  const arm = new THREE.Group();
-  arm.position.set(0.25, 1.37, 0.07);
-  group.add(arm);
-  view.part(arm, view.boxGeo, s.aaltoBlue, 0, -0.1, 0.1, 0.12, 0.3, 0.13).rotation.x = -0.65;
-  view.part(arm, view.boxGeo, skin, 0, -0.17, 0.27, 0.1, 0.12, 0.3);
-  view.part(arm, view.boxGeo, s.wood, 0, -0.1, 0.46, 0.025, 0.32, 0.025).rotation.x = 0.7;
-  box(-0.27, 1.14, 0.08, 0.12, 0.45, 0.13, s.aaltoBlue);
+  const actor = createHuman({
+    id: 'anders',
+    name: ARTIST.name,
+    appearanceRole: 'artist',
+    armed: false,
+  });
+  group.add(actor);
+  view.part(
+    actor.userData.human.arms[1].elbow,
+    view.boxGeo,
+    s.wood,
+    0,
+    -0.32,
+    0.07,
+    0.015,
+    0.27,
+    0.015,
+  );
   // Easel carries two visibly different pen drawings.
   for (const x of [-0.65, 0.65]) box(x, 0.88, 0.82, 0.045, 1.75, 0.06).rotation.z = x * 0.15;
   box(0, 0.72, 0.79, 1.55, 0.05, 0.1);
@@ -126,7 +128,7 @@ export function buildArtist(view) {
     ARTIST.z,
     5,
   );
-  return { group, arm };
+  return { group, actor };
 }
 export function renderPaint(view, state, myId) {
   if (!view.paintMeshes) {

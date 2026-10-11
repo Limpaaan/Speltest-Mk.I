@@ -1,3 +1,5 @@
+import { inParking, planSites } from './sites.js';
+import { roadWidth, crossing } from './roads.js';
 // Deterministic fictional infill around real OSM streets, never asserted as real footprints.
 export function createScenery(map, waterAt, distance, heightAt) {
   const buildings = [],
@@ -15,6 +17,7 @@ export function createScenery(map, waterAt, distance, heightAt) {
     Math.abs(z) < 540 &&
     Math.hypot(x - map.spawn.x, z - map.spawn.z) > 35 &&
     !waterAt(x, z) &&
+    !inParking(map.parking || [], x, z, r + 2) &&
     !overlaps(x, z, r * 2, r * 2, map.places, 12) &&
     !overlaps(x, z, r * 2, r * 2, map.cover, 3);
   for (const road of map.roads) {
@@ -34,7 +37,11 @@ export function createScenery(map, waterAt, distance, heightAt) {
       if (
         !safe(x, z, radius) ||
         overlaps(x, z, w, d, buildings, 5) ||
-        map.roads.some((r) => distance(x, z, ...r.points) < radius + 4)
+        map.roads.some(
+          (r) =>
+            distance(x, z, ...r.points) < radius + Math.max(4, roadWidth(r) / 2 + 0.8) ||
+            crossing(...r.points, { x, z, w, d }, roadWidth(r) / 2 + 0.5),
+        )
       )
         continue;
       if (waterAt(x - w / 2, z - d / 2) || waterAt(x + w / 2, z + d / 2)) continue;
@@ -59,6 +66,9 @@ export function createScenery(map, waterAt, distance, heightAt) {
     }
     if (buildings.length >= 180) break;
   }
+  const infillSites = planSites([...map.places, ...buildings], map.roads, waterAt, buildings);
+  map.entrances.push(...infillSites.entrances);
+  map.roads.push(...infillSites.access);
   for (let i = 0; i < 8000 && trees.length < 950; i++) {
     const x = (rng() - 0.5) * 1100,
       z = (rng() - 0.5) * 1100;

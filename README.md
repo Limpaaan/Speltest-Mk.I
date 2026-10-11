@@ -4,7 +4,7 @@
 
 En spelbar, svenskspråkig **3D RPG-lootershooterprototyp** i ett postapokalyptiskt Avesta. Stadens försvarare möter det fiktiva danska **Järnsundskompaniet**, en militär invasionsfraktion. Berättelsen handlar om hembygd, gemenskap och motstånd. Fraktionen representerar inte danskar som folk.
 
-Version **0.6** är en spelbar webbläsarprototyp med FPS-vy, verkliga Copernicus-höjder, tätare bebyggelse, skog och stenblock. Grundhastigheten är ungefär 60 procent lägre; terräng och lutning påverkar färden. Vägar och älvförlopp bygger på OpenStreetMap. Tio kartpunkter har källbelagda positioner; Plushuset och Åsbo är fortfarande ungefärliga. Omgivningshus, vegetation och byggnadernas arkitektur är tolkade, inte uppmätta. Se [kartans status och datakällor](docs/MAP.md).
+Version **0.7** är en spelbar webbläsarprototyp med FPS-vy, verkliga Copernicus-höjder, tätare bebyggelse, skog och stenblock. Grundhastigheten är ungefär 60 procent lägre; terräng och lutning påverkar färden. Vägar och älvförlopp bygger på OpenStreetMap. Tio kartpunkter har källbelagda positioner. Plushuset, Åsbo och de nytillkomna kvartersbyggnaderna är ungefärliga. Omgivningshus, vegetation och byggnadernas arkitektur är tolkade, inte uppmätta. Se [kartans status och datakällor](docs/MAP.md).
 
 Spela på **https://limpaaan.github.io/Speltest-Mk.I/**. Ingen installation behövs för spelaren.
 
@@ -60,7 +60,7 @@ Vites utvecklingsserver använder port **5173** och skickar `/ws` vidare till sp
 - Personligt loot, 16 packningsplatser, utrustning, skrotning, läkning med skrot, nivåer upp till 30 och två talangspår.
 - Tre grunduppdrag: besegra fem soldater, bärga tre fynd och besegra en boss.
 - Bossarna **Slaggjarlen** vid Verket och **Ryttmästare Mörk** vid Dalahästen har olika silhuetter och förvarnade attacker: cirkulär slaggpuls respektive riktad eldkon och garanterat legendariskt loot. Vanliga fiender återkommer efter 35 sekunder, bossar efter 120 sekunder.
-- Namngivna miljöer: Aalto-huset, Plushuset, Verket, Koppardalen, Dalälven med broar, Dalahästen, Prästjorden, Åsbo och Skogsbo. Vägsträckningar, registrerade vägbroar och älvförlopp bygger på en OSM-export daterad 2026-10-06. Skalan är komprimerad 1:4; byggnader och vattenbredder är förenklade. `~` markerar de två ännu ungefärliga platserna.
+- Namngivna miljöer: Aalto-huset, Plushuset, Verket, Koppardalen, Dalälven med broar, Dalahästen, Prästjorden, Åsbo och Skogsbo. Vägsträckningar, registrerade vägbroar och älvförlopp bygger på en OSM-export daterad 2026-10-06. Skalan är komprimerad 1:4; byggnader och vattenbredder är förenklade. `~` markerar ungefärliga platser och nytillkomna tolkningar från referenskartan.
 
 ### Kontroller
 
@@ -157,3 +157,7 @@ En sammanhängande kampanj i åtta kapitel ger uppdragen en gemensam berättelse
 Varmt höstljus, svalare skuggor, varierad mark med detaljrelief, sprucken asfalt, björkar, vajande gräs, vattennormaler och fler små miljödetaljer utvecklar den svenska industrikänslan. Se [berättelse, klassförmågor och grafik](docs/STORY.md) för spelregler och begränsningar.
 
 ![Aaltohuset med uppdaterat höstljus och markmaterial](docs/images/aalto-v06.png)
+
+## Nytt i 0.7 — Människorna och kvarteren
+
+Civila yrkeskläder, ledade människomodeller med ansikten, grepp- och vilorörelser, buskar och varierade trädsilhuetter. Sex ombyggda vapenmodeller, entrégångvägar och butiksparkeringar. Upphöjda vägar med byggnadskontroll, fyra prioriterade Avestaområden, polisbilar, animerad eld och rök, fungerande gatlyktor och en gemensam 40-minuters dag–nattcykel. Klassnamn och sparningar bevaras. Se [utförande, datakällor och begränsningar](docs/RELEASE-0.7.md). Versionsnumret avser denna källkod; den publika spelsidan uppdateras först efter en separat publicering.

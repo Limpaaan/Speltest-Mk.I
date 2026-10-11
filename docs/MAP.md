@@ -57,3 +57,9 @@ Liveimporten behöver `curl`, TLS-verifiering och åtkomst till **overpass-api.d
 Kartdatabasen är **© OpenStreetMap contributors**, tillgänglig under **Open Database License (ODbL) 1.0**. Se [OSM:s upphovsrättssida](https://www.openstreetmap.org/copyright) och [licenstexten](https://opendatacommons.org/licenses/odbl/1-0/).
 
 Attribuering visas alltid i spelet. Produktionsbygget tillhandahåller `/map-source.json` (källutdrag), `/map-database.json` (bearbetad databas) och `/NOTICE-OSM.txt` (licensmeddelande), även i offlinecachen. Dessa kartdatabaser omfattas av ODbL; projektets egen kod och konst har separat upphovsrätt. Originalkoordinater och ID gör ändringarna spårbara.
+
+## Områdestolkning i 0.7
+
+`shared/districts.js` innehåller den första passningen av Koppardalen, Gamla Byn, Holmen och Åsbo handelsområde efter användarens färgmarkerade översiktskarta. Nya punkter är uttryckligen ungefärliga (`verified: false`, `architecture: user-map-approximation`). Två redan inlagda OSM-punkter, Verket och Dalahästen, används som ankare. Perspektiv, kartetiketternas placering och den komprimerade spelvärlden ger osäkerheter; tabellen ovan innebär inte att dessa nya byggnader har verifierats.
+
+Rågeografin i `shared/geography.json` skrivs inte över. `shared/roads.js` härleder spelvägar som undviker byggnadsvolymerna och ger en låg fysisk vägbank. Procedurhusen kontrolleras även mot broarnas fulla bredd. Strandstigar är tolkade tillägg, inte verifierade ledsträckningar. [Versionsanteckningarna](RELEASE-0.7.md) beskriver vilka byggnader som har tillkommit och vilka referenser som saknas.

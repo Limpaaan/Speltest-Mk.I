@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: './test/browser',
   timeout: 90000,
   workers: 1,
+  // SwiftShader may compile/render the first detailed scene for more than five seconds.
+  expect: { timeout: 15000 },
   use: {
     baseURL: 'http://127.0.0.1:4173',
     viewport: { width: 1440, height: 1000 },

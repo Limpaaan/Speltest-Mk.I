@@ -1,3 +1,9 @@
+import { buildVegetation } from './vegetation.js';
+import { DayNight } from './daylight.js';
+import { buildVehicles } from './vehicles.js';
+import { roadWidth } from '../shared/roads.js';
+import { districtBuilding, districtDetails } from './districts.js';
+import { createHuman, animateHuman, createWorkHands } from './humans.js';
 import { Atmosphere, tintTerrain, foliageMaterial, waterNormals } from './atmosphere.js';
 import { campaignTarget } from '../shared/story.js';
 import { buildArtist, renderPaint } from './art.js';
@@ -38,7 +44,8 @@ export class WorldView {
     this.scene.fog = new THREE.FogExp2('#b2b2a0', 0.0021);
     this.camera = new THREE.PerspectiveCamera(78, 1, 0.04, 1300);
     this.camera.rotation.order = 'YXZ';
-    this.scene.add(new THREE.HemisphereLight('#a6bccb', '#4d4737', 1.45));
+    this.hemisphere = new THREE.HemisphereLight('#a6bccb', '#4d4737', 1.45);
+    this.scene.add(this.hemisphere);
     this.sun = new THREE.DirectionalLight('#ffdcaa', 3.0);
     this.sun.castShadow = true;
     this.sun.position.set(-110, 80, 180);
@@ -59,6 +66,7 @@ export class WorldView {
     this.boxGeo = new THREE.BoxGeometry(1, 1, 1);
     this.batches = new Map();
     this.entities = new Map();
+    this.civilians = [];
     this.shots = new THREE.Group();
     this.scene.add(this.shots);
     this.seenShots = new Set();
@@ -71,6 +79,8 @@ export class WorldView {
     this.s.water.normalScale.set(0.45, 0.45);
     this.flush();
     this.buildWeapon();
+    this.dayNight = new DayNight(this);
+    this.vehicles = buildVehicles(this);
     this.lamp = new THREE.SpotLight('#fff1cf', 35, 45, 0.35, 0.5, 1);
     this.scene.add(this.lamp, this.lamp.target);
     this.cacheMeshes = CACHES.map((c) => {
@@ -114,6 +124,11 @@ export class WorldView {
       const old = clone;
       clone = old.toNonIndexed();
       old.dispose();
+    }
+    if (mat.vertexColors && !clone.attributes.color) {
+      const colors = new Float32Array(clone.attributes.position.count * 3);
+      colors.fill(1);
+      clone.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     }
     clone.applyMatrix4(matrix);
     if (!this.batches.has(mat)) this.batches.set(mat, []);
@@ -255,7 +270,21 @@ export class WorldView {
       this.static(geo, mat, 0, 0, 0);
       geo.dispose();
     };
-    strip(MAP.roads, s.asphalt, 0.04);
+    strip(
+      MAP.roads.filter((r) => !r.bridge).map((r) => ({ ...r, width: roadWidth(r) + 1.6 })),
+      s.soil,
+      0.012,
+    );
+    strip(
+      MAP.roads.filter((r) => !r.bridge && r.surface !== 'gravel'),
+      s.asphalt,
+      0.02,
+    );
+    strip(
+      MAP.roads.filter((r) => r.surface === 'gravel'),
+      s.soil,
+      0.02,
+    );
     strip(MAP.rivers, s.water, 0.065);
     for (const water of MAP.waters) {
       // Dense masked tiles avoid giant flat triangles covering river valleys.
@@ -320,7 +349,7 @@ export class WorldView {
       else if (p.w && p.d) this.building(p);
     }
     this.baseY = 0;
-    for (const p of MAP.cover) {
+    for (const p of MAP.cover.filter((p) => p.type !== 'police')) {
       this.baseY = groundHeight(p.x, p.z);
       if (p.type === 'wreck') {
         const body = new THREE.BoxGeometry(p.w - 0.12, 0.55, p.d);
@@ -360,6 +389,7 @@ export class WorldView {
       }
     }
     this.baseY = 0;
+    districtDetails(this);
     this.vegetation();
     this.buildCamp();
     for (const npc of NPCS) {
@@ -367,7 +397,9 @@ export class WorldView {
         this.artist = buildArtist(this);
         continue;
       }
-      const actor = this.soldier(npc);
+      const actor = this.soldier({ ...npc, armed: npc.id === 'einar' });
+      actor.userData.npcId = npc.id;
+      this.civilians.push(actor);
       actor.position.set(npc.x, groundHeight(npc.x, npc.z), npc.z);
       this.scene.add(actor);
       this.sign(npc.name, npc.x, groundHeight(npc.x, npc.z) + 2.6, npc.z, 4);
@@ -387,6 +419,7 @@ export class WorldView {
     );
   }
   building(p) {
+    if (p.district) return districtBuilding(this, p);
     if (p.id === 'verket') return buildVerket(this, p);
     if (p.id === 'aalto') return buildAalto(this, p);
     const s = this.s,
@@ -478,57 +511,14 @@ export class WorldView {
     buildHorse(this, p);
   }
   vegetation() {
-    const dummy = new THREE.Object3D();
-    for (const birch of [false, true]) {
-      const trees = MAP.trees.filter((_, i) => (i % 5 === 0) === birch);
-      const trunks = new THREE.InstancedMesh(
-        new THREE.CylinderGeometry(0.26, 0.48, 1, 8),
-        birch ? this.s.birch : this.s.bark,
-        trees.length,
-      );
-      const crowns = new THREE.InstancedMesh(
-        new THREE.PlaneGeometry(1, 1),
-        birch ? foliageMaterial('birch') : spruceMaterial(),
-        trees.length * 3,
-      );
-      trees.forEach(({ x, z, h }, i) => {
-        dummy.rotation.set(0, 0, 0);
-        dummy.position.set(x, groundHeight(x, z) + h / 2, z);
-        dummy.scale.set(1, h, 1);
-        dummy.updateMatrix();
-        trunks.setMatrixAt(i, dummy.matrix);
-        for (let j = 0; j < 3; j++) {
-          dummy.position.set(x, groundHeight(x, z) + h * 0.5, z);
-          dummy.rotation.y = (j * Math.PI) / 3 + i;
-          dummy.scale.set(h * (birch ? 0.68 : 0.48), h, 1);
-          dummy.updateMatrix();
-          crowns.setMatrixAt(i * 3 + j, dummy.matrix);
-        }
-      });
-      trunks.castShadow = crowns.castShadow = true;
-      trunks.receiveShadow = crowns.receiveShadow = true;
-      this.scene.add(trunks, crowns);
-    }
-    const rocks = new THREE.InstancedMesh(
-      new THREE.IcosahedronGeometry(1, 1),
-      this.s.concrete,
-      MAP.rocks.length,
-    );
-    MAP.rocks.forEach((p, i) => {
-      dummy.position.set(p.x, groundHeight(p.x, p.z) + p.h * 0.4, p.z);
-      dummy.rotation.set(0.12, i, 0.25);
-      dummy.scale.set(p.radius, p.h * 0.6, p.radius);
-      dummy.updateMatrix();
-      rocks.setMatrixAt(i, dummy.matrix);
-    });
-    rocks.castShadow = true;
-    rocks.receiveShadow = true;
-    this.scene.add(rocks);
+    buildVegetation(this);
   }
   buildCamp() {
     const { x, z } = CAMP;
     this.baseY = groundHeight(x, z);
-    const maja = this.soldier({ classId: 'kopparslagare' });
+    const maja = this.soldier({ id: 'maja', name: 'Maja', classId: 'stalvakt', armed: false });
+    maja.userData.npcId = 'maja';
+    this.civilians.push(maja);
     maja.position.set(x, this.baseY, z);
     maja.rotation.y = -0.9;
     this.scene.add(maja);
@@ -554,63 +544,10 @@ export class WorldView {
     return weaponModel(kind, this.s, this.boxGeo, mods);
   }
   soldier(entity) {
-    const group = new THREE.Group(),
-      uniform = new THREE.MeshStandardMaterial({
-        color: entity.classId
-          ? CLASSES[entity.classId].color
-          : entity.landmark === 'horse'
-            ? '#614d86'
-            : ENEMY_TYPES[entity.type]?.color || '#62674e',
-        roughness: 1,
-      });
-    group.userData.ownMaterial = uniform;
-    const capsule = new THREE.CapsuleGeometry(0.12, 0.4, 4, 8),
-      sphere = new THREE.SphereGeometry(1, 12, 8);
-    this.part(group, capsule, uniform, 0, 1.13, 0, 1.7, 0.65, 1);
-    this.part(group, sphere, this.s.metal, 0, 1.69, 0, 0.16, 0.17, 0.15);
-    group.userData.legs = [];
-    for (const side of [-1, 1]) {
-      group.userData.legs.push(
-        this.part(group, capsule, uniform, side * 0.13, 0.47, 0, 0.72, 1.05, 0.8),
-      );
-      this.part(group, capsule, uniform, side * 0.25, 1.1, 0.13, 0.5, 0.7, 0.5).rotation.x = -0.4;
-      this.part(group, this.boxGeo, this.s.metal, side * 0.13, 0.08, 0.055, 0.18, 0.14, 0.28);
-    }
-    const rifle = this.rifle(entity.weapon?.kind || ENEMY_TYPES[entity.type]?.weapon || 'rifle');
-    rifle.position.set(0.1, 1.13, 0.35);
-    rifle.rotation.y = Math.PI;
-    group.add(rifle);
-    group.userData.geometries = [capsule, sphere];
-    const armor = entity.type === 'heavy' || entity.type === 'boss';
-    if (armor) {
-      this.part(group, this.boxGeo, this.s.metal, 0, 1.18, 0.13, 0.48, 0.48, 0.16);
-      for (const side of [-1, 1])
-        this.part(group, sphere, this.s.rust, side * 0.28, 1.43, 0, 0.17, 0.14, 0.16);
-      this.part(group, this.boxGeo, this.s.metal, 0, 1.69, 0.14, 0.28, 0.12, 0.06);
-    }
-    if (entity.type === 'marksman') {
-      this.part(group, sphere, uniform, 0, 1.7, -0.03, 0.23, 0.21, 0.23);
-      this.part(group, this.boxGeo, uniform, 0, 1.17, -0.15, 0.55, 0.68, 0.13);
-    }
-    if (entity.type === 'rusher') {
-      this.part(group, this.boxGeo, this.s.wood, 0, 1.12, -0.18, 0.3, 0.43, 0.22);
-      this.part(group, this.boxGeo, this.s.rust, 0, 1.69, 0.15, 0.25, 0.06, 0.03);
-    }
-    if (entity.classId === 'faltvardare') {
-      this.part(group, this.boxGeo, this.s.plaster, 0, 1.15, 0.13, 0.27, 0.27, 0.08);
-      this.part(group, this.boxGeo, this.s.rust, 0, 1.15, 0.18, 0.18, 0.06, 0.01);
-      this.part(group, this.boxGeo, this.s.rust, 0, 1.15, 0.18, 0.06, 0.18, 0.01);
-    }
-    if (entity.landmark === 'horse') {
-      this.part(group, this.boxGeo, uniform, 0, 1.22, -0.21, 0.48, 0.8, 0.06);
-      const crest = new THREE.ConeGeometry(0.11, 0.4, 8);
-      this.part(group, crest, this.s.rust, 0, 1.97, 0);
-      group.userData.geometries.push(crest);
-    }
-    if (entity.landmark === 'verket')
-      for (const side of [-1, 1])
-        this.part(group, this.boxGeo, this.s.rust, side * 0.2, 1.3, -0.23, 0.17, 0.6, 0.18);
-
+    const group = createHuman(
+      { ...entity, weapon: entity.weapon || { kind: ENEMY_TYPES[entity.type]?.weapon || 'rifle' } },
+      (kind, mods) => this.rifle(kind, mods),
+    );
     if (entity.type === 'boss') {
       const scale = 3.1 / 1.85;
       group.scale.setScalar(scale);
@@ -638,18 +575,16 @@ export class WorldView {
   }
   buildWeapon() {
     this.weaponScene = new THREE.Scene();
-    this.weaponScene.add(new THREE.HemisphereLight('#e4e9d9', '#454e35', 3));
+    this.weaponLight = new THREE.HemisphereLight('#e4e9d9', '#454e35', 3);
+    this.weaponScene.add(this.weaponLight);
+    this.weaponKeyLight = new THREE.DirectionalLight('#e7e2d5', 2);
+    this.weaponKeyLight.position.set(-2, 3, 2);
+    this.weaponScene.add(this.weaponKeyLight);
     this.weaponCamera = new THREE.PerspectiveCamera(65, 1, 0.025, 8);
     this.weapon = this.rifle();
     this.weaponScene.add(this.weapon);
-    const glove = new THREE.MeshStandardMaterial({ color: '#43513d', roughness: 1 });
-    const arm = new THREE.CapsuleGeometry(0.035, 0.25, 4, 8);
-    this.hands = new THREE.Group();
+    this.hands = createWorkHands();
     this.weapon.add(this.hands);
-    for (const side of [-1, 1]) {
-      const mesh = this.part(this.hands, arm, glove, side * 0.1, -0.18, 0.1);
-      mesh.rotation.x = -1.1;
-    }
     this.flash = new THREE.Mesh(
       new THREE.SphereGeometry(0.035, 6, 4),
       new THREE.MeshBasicMaterial({ color: '#ffe6ad' }),
@@ -667,6 +602,13 @@ export class WorldView {
     ]) {
       seen.add(e.id);
       let mesh = this.entities.get(e.id);
+      if (
+        !mesh &&
+        !e.loot &&
+        e.id !== myId &&
+        Math.hypot(e.x - (player?.x ?? MAP.spawn.x), e.z - (player?.z ?? MAP.spawn.z)) > 180
+      )
+        continue;
       if (!mesh) {
         if (e.loot) {
           mesh = new THREE.Group();
@@ -683,10 +625,37 @@ export class WorldView {
         this.entities.set(e.id, mesh);
         this.scene.add(mesh);
       }
+      const rig = mesh.userData.human;
+      if (rig?.weapon && e.weapon) {
+        const key = e.weapon.kind + JSON.stringify(e.weapon.mods || {});
+        if (rig.weaponKey !== key) {
+          rig.torso.remove(rig.weapon);
+          rig.weapon.userData.geometries.forEach((g) => g.dispose());
+          rig.weapon = this.rifle(e.weapon.kind, e.weapon.mods);
+          rig.weapon.position.set(0.08, 0.3, 0.16);
+          rig.weapon.rotation.y = Math.PI;
+          rig.torso.add(rig.weapon);
+          rig.weaponKey = key;
+        }
+      }
+      const recoil = state.shots.some((s) => s.owner === e.id) ? 0.25 : 0;
       const moving = Math.hypot(mesh.position.x - e.x, mesh.position.z - e.z) > 0.015;
-      mesh.userData.legs?.forEach(
-        (leg, i) => (leg.rotation.x = moving ? Math.sin(time * 8 + i * Math.PI) * 0.42 : 0),
-      );
+      animateHuman(mesh, state.time, {
+        moving,
+        sprinting: e.sprinting,
+        crouch: e.crouch,
+        pitch: e.pitch,
+        reload: e.reload,
+        recoil,
+        gesture: e.gesture,
+        combat:
+          !e.classId ||
+          e.cooldown > 0 ||
+          (e.id === myId && controls.ads) ||
+          state.enemies.some(
+            (enemy) => enemy.hp > 0 && Math.hypot(enemy.x - e.x, enemy.z - e.z) < 40,
+          ),
+      });
       if (mesh.userData.warning) {
         mesh.userData.warning.visible = e.windup > 0;
         mesh.userData.warning.material.opacity = 0.4 + Math.sin(time * 14) * 0.2;
@@ -694,18 +663,18 @@ export class WorldView {
       mesh.position.lerp(new THREE.Vector3(e.x, groundHeight(e.x, e.z), e.z), Math.min(1, dt * 20));
       mesh.visible =
         (e.loot ? e.owner === myId : e.hp > 0) &&
-        !(active && e.id === myId) &&
+        e.id !== myId &&
         Math.hypot(e.x - this.camera.position.x, e.z - this.camera.position.z) < 180;
       mesh.rotation.y =
         (e.windup > 0 ? e.attackAim : e.aim) ??
         (player ? Math.atan2(player.x - e.x, player.z - e.z) : 0);
-      mesh.scale.y = (e.type === 'boss' ? 3.1 / 1.85 : 1) * (e.crouch ? 0.65 : 1);
     }
     for (const [id, mesh] of this.entities)
       if (!seen.has(id)) {
         this.scene.remove(mesh);
         mesh.userData.ownMaterial.dispose();
         mesh.userData.warningMaterial?.dispose();
+        mesh.userData.extraMaterials?.forEach((m) => m.dispose());
         mesh.traverse((child) => child.userData.geometries?.forEach((g) => g.dispose()));
         this.entities.delete(id);
       }
@@ -758,9 +727,28 @@ export class WorldView {
     if (this.seenShots.size > 300) this.seenShots.clear();
     for (const { c, mesh } of this.cacheMeshes) mesh.visible = !player?.searched.includes(c.id);
     this.lamp.visible = Boolean(active && player?.hp > 0 && player?.flashlight);
-    if (this.artist) {
-      this.artist.arm.rotation.x = Math.sin(time * 3.5) * 0.14;
-      this.artist.arm.rotation.z = Math.cos(time * 2) * 0.12;
+    if (this.artist) animateHuman(this.artist.actor, state.time, { drawing: state.time % 32 < 22 });
+    for (const actor of this.civilians) {
+      const near =
+        player &&
+        actor.position.distanceTo(new THREE.Vector3(player.x, actor.position.y, player.z)) < 6;
+      const angle = near
+        ? Math.atan2(player.x - actor.position.x, player.z - actor.position.z) - actor.rotation.y
+        : 0;
+      const exchange = Object.values(state.players).find(
+        (p) =>
+          p.gesture?.npcId === actor.userData.npcId &&
+          state.time < p.gesture.start + p.gesture.duration,
+      );
+      if (exchange) {
+        const target = Math.atan2(exchange.x - actor.position.x, exchange.z - actor.position.z),
+          diff = target - actor.rotation.y;
+        actor.rotation.y += Math.atan2(Math.sin(diff), Math.cos(diff)) * Math.min(1, dt * 5);
+      }
+      animateHuman(actor, state.time, {
+        look: near ? Math.atan2(Math.sin(angle), Math.cos(angle)) : 0,
+        gesture: exchange?.gesture,
+      });
     }
     renderPaint(this, state, myId);
     this.recoil *= Math.exp(-dt * 12);
@@ -773,6 +761,16 @@ export class WorldView {
       );
       this.camera.rotation.set(controls.pitch ?? 0, (controls.yaw ?? Math.PI) + Math.PI, 0, 'YXZ');
       const stats = weaponStats(player);
+      const playerSkin = this.entities.get(myId)?.userData.human?.skin;
+      if (
+        this.hands.userData.classId !== player.classId ||
+        this.hands.userData.skin !== playerSkin
+      ) {
+        this.weapon.remove(this.hands);
+        this.hands.userData.geometries.forEach((g) => g.dispose());
+        this.hands = createWorkHands(player.classId, playerSkin);
+        this.weapon.add(this.hands);
+      }
       const weaponKey = player.weapon.kind + JSON.stringify(player.weapon.mods || {});
       if (this.weapon.userData.cacheKey !== weaponKey) {
         this.weaponScene.remove(this.weapon);
@@ -804,7 +802,31 @@ export class WorldView {
       );
       this.weapon.rotation.set(reload * 0.35, 0, -reload * 0.65);
       rig.magazine.position.y = rig.magazineY - reload * (stats.pellets ? 0.04 : 0.22);
-      this.hands.children[0].position.y = -0.18 - reload * 0.12;
+      this.hands.children[0].position.set(
+        -0.035,
+        rig.supportGrip[1] - reload * 0.12,
+        rig.supportGrip[2] + reload * 0.18,
+      );
+      this.hands.children[1].position.set(0.035, rig.rightGrip[1], rig.rightGrip[2]);
+      const gesture = player.gesture,
+        gestureAge = gesture ? (state.time - gesture.start) / gesture.duration : -1;
+      this.hands.children[0].rotation.set(0, 0, 0);
+      this.hands.userData.parcel.visible = false;
+      if (
+        gestureAge >= 0 &&
+        gestureAge < 1 &&
+        !controls.moving &&
+        !controls.ads &&
+        player.reload <= 0
+      ) {
+        const reach = Math.sin(gestureAge * Math.PI);
+        this.hands.children[0].position.y -= reach * (gesture.kind === 'pickup' ? 0.16 : -0.06);
+        this.hands.children[0].position.z -= reach * 0.24;
+        this.hands.children[0].rotation.x = -reach * 0.45;
+        this.weapon.position.y -= reach * 0.07;
+        this.hands.userData.parcel.visible =
+          gesture.kind !== 'use' && gestureAge > 0.32 && gestureAge < 0.88;
+      }
       rig.action.position.z = this.recoil * 0.4;
       if (rig.pump) rig.pump.position.z = -0.43 + Math.min(0.13, this.recoil);
       document
@@ -827,6 +849,12 @@ export class WorldView {
       this.sun.target.position.set(0, 0, 95);
     }
     this.atmosphere.update(time, player);
+    this.dayNight.update(state.dayTime ?? state.time ?? 0);
+    this.vehicles.update(
+      time,
+      this.camera.position,
+      this.softwareRenderer || this.settings?.graphics === 'low',
+    );
     this.camera.updateProjectionMatrix();
     this.sky.position.copy(this.camera.position);
     this.renderer.clear();
@@ -863,7 +891,7 @@ export class WorldView {
     }
     const quality = { low: 0.65, medium: 1, high: 1.5 }[settings.graphics];
     this.renderer.setPixelRatio(
-      this.softwareRenderer ? Math.min(0.75, quality) : Math.min(devicePixelRatio, quality),
+      this.softwareRenderer ? Math.min(0.55, quality) : Math.min(devicePixelRatio, quality),
     );
     this.renderer.shadowMap.enabled = settings.graphics !== 'low' && !this.softwareRenderer;
     this.resize();

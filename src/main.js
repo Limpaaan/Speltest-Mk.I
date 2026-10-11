@@ -1,3 +1,5 @@
+import { PROFESSIONS } from './humans.js';
+import { daylight } from '../shared/daylight.js';
 import { CLASS_SKILLS } from '../shared/class-skills.js';
 import { nearbyStory, EPILOGUE } from '../shared/story.js';
 import { renderJournal, objectiveText } from './journal.js';
@@ -126,7 +128,7 @@ function renderClasses() {
   }
   const c = CLASSES[selected];
   $('class-detail').textContent =
-    `${c.subtitle}. ${c.description} Taktisk talang: ${CLASS_SKILLS[selected][2][0]}. Fart ${c.speed} · ${c.hp} hälsa. Specialvapen: ${SPECIALTIES[selected].map((k) => WEAPONS[k].name).join(', ')} (snabbare omladdning). ${['stalvakt', 'bruksingenjor'].includes(selected) ? 'Tung klass: kulspruta och rustning 3 från början.' : 'Kulspruta och rustning 3 kräver talanger.'}`;
+    `${c.subtitle}. Yrkesbakgrund: ${PROFESSIONS[selected]}. ${c.description} Taktisk talang: ${CLASS_SKILLS[selected][2][0]}. Fart ${c.speed} · ${c.hp} hälsa. Specialvapen: ${SPECIALTIES[selected].map((k) => WEAPONS[k].name).join(', ')} (snabbare omladdning). ${['stalvakt', 'bruksingenjor'].includes(selected) ? 'Tung klass: kulspruta och rustning 3 från början.' : 'Kulspruta och rustning 3 kräver talanger.'}`;
 }
 renderClasses();
 try {
@@ -139,7 +141,12 @@ try {
 function loadSave() {
   try {
     const raw = localStorage.getItem(`avesta-save-v1-${selected}`);
-    if (raw) restorePlayer(world, world.players[myId], JSON.parse(raw));
+    if (raw) {
+      const saved = JSON.parse(raw);
+      restorePlayer(world, world.players[myId], saved);
+      if (Number.isFinite(saved.dayTime) && saved.dayTime >= 0)
+        world.dayTime = saved.dayTime % 2400;
+    }
   } catch {
     storageWarning = true;
   }
@@ -149,7 +156,7 @@ function persist() {
   try {
     localStorage.setItem(
       `avesta-save-v1-${world.players[myId].classId}`,
-      JSON.stringify(savePlayer(world.players[myId])),
+      JSON.stringify({ ...savePlayer(world.players[myId]), dayTime: world.dayTime }),
     );
   } catch {
     storageWarning = true;
@@ -543,7 +550,7 @@ function updateHUD() {
       : `RUM ${roomName} / ${Object.keys(state.players).length} AV 8 SPELARE`;
   updateCaptureHint();
   $('compass').textContent =
-    `${Math.round((((180 - (look.yaw * 180) / Math.PI) % 360) + 360) % 360)}°`;
+    `${Math.round((((180 - (look.yaw * 180) / Math.PI) % 360) + 360) % 360)}° · ${daylight(state.dayTime ?? state.time).label}`;
   $('stance').textContent = p.crouch ? 'HUKANDE' : p.sprinting ? 'SPRINGER' : 'STÅENDE';
   $('stamina').textContent = `UTHÅLLIGHET ${Math.ceil(p.stamina ?? 100)}`;
   $('admin-open').hidden = !isAdmin(p);
@@ -604,14 +611,17 @@ function updateHUD() {
             : nearby
               ? `E · Bärga ${lootName(nearby)}`
               : '';
-  const place = [...MAP.places].sort(
-    (a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z),
-  )[0];
+  const district = MAP.districts
+    .filter((d) => Math.hypot(d.x - p.x, d.z - p.z) < d.radius)
+    .sort((a, b) => a.radius - b.radius)[0];
+  const place = MAP.places
+    .filter((p) => p.name)
+    .sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
   $('zone').textContent = inSanctuary(p)
     ? 'SAMLINGSPLATS · SKYDDAD ZON'
     : inArena(p)
       ? `SKOGSBO ARENA · ${mode === 'online' && p.pvp ? 'PVP AKTIVT' : 'PVP AV'}`
-      : `${place.name.toUpperCase()} · ${mode === 'online' ? 'SAMARBETE' : 'ENSAMSPEL'}`;
+      : `${(district?.name || place.name).toUpperCase()} · ${mode === 'online' ? 'SAMARBETE' : 'ENSAMSPEL'}`;
   $('quest-list').replaceChildren();
   for (const [label, value, target] of [
     ['Håll skiftet', p.kills, 5],

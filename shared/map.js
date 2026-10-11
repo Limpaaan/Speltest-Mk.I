@@ -1,3 +1,7 @@
+import { planSites, inParking } from './sites.js';
+import { createVehicles } from './ambience.js';
+import { DISTRICT_BUILDINGS, DISTRICTS, DISTRICT_ROADS } from './districts.js';
+import { fitRoads, roadIndex, roadLift } from './roads.js';
 import {
   AALTO_WALLS,
   AALTO_FURNITURE,
@@ -12,13 +16,14 @@ import geography from './geography.json' with { type: 'json' };
 const aalto = geography.places.find((p) => p.id === 'aalto'),
   skogsbo = geography.places.find((p) => p.id === 'skogsbo');
 export const MAP = {
-  version: 3,
+  version: 4,
   extent: 570,
   spawn: { x: aalto.x + aalto.w / 2 + 10, z: aalto.z + 10 },
   notice:
     'OSM-karta • Copernicus-höjder • omgivande bebyggelse och arkitektur tolkade • ~ = ungefärlig plats',
-  places: geography.places,
-  roads: geography.roads,
+  places: [...geography.places, ...DISTRICT_BUILDINGS],
+  districts: DISTRICTS,
+  roads: [...geography.roads, ...DISTRICT_ROADS],
   rivers: geography.rivers,
   waters: geography.waters,
   bridges: geography.roads.filter((r) => r.bridge),
@@ -61,7 +66,12 @@ export function groundHeight(x, z) {
   if (inAalto(x, z)) return AALTO_FLOOR;
   const ramp = aaltoRamp(x, z);
   if (ramp !== null) return ramp;
-  let height = terrainHeight(x, z);
+  let height =
+    terrainHeight(x, z) +
+    Math.max(
+      inParking(MAP.parking || [], x, z) ? 0.12 : 0,
+      roadLift(x, z, nearbyRoads, segmentDistance),
+    );
   for (const b of MAP.bridges) {
     const [a, c] = b.points;
     if (segmentDistance(x, z, a, c) > 5) continue;
@@ -233,7 +243,14 @@ export function raycastWorld(origin, direction, range) {
     : null;
 }
 
+MAP.roads = fitRoads(MAP.roads, MAP.places);
+const sites = planSites(MAP.places, MAP.roads, waterAt);
+MAP.parking = sites.parking;
+MAP.entrances = sites.entrances;
+MAP.roads.push(...sites.access);
 Object.assign(MAP, createScenery(MAP, waterAt, segmentDistance, terrainHeight));
+const nearbyRoads = roadIndex(MAP.roads);
+MAP.cover.push(...createVehicles(MAP, waterAt, segmentDistance));
 const obstacleCells = new Map();
 for (const obstacle of [...MAP.trees, ...MAP.rocks]) {
   const key = `${Math.floor(obstacle.x / 10)},${Math.floor(obstacle.z / 10)}`;

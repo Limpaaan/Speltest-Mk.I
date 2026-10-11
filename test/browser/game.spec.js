@@ -59,35 +59,82 @@ test('FPS mouse capture, look, sprint, crouch, ADS shooting, inventory and pause
 test('two browser clients join the same room and see the shared player count', async ({
   browser,
 }) => {
-  const context = await browser.newContext();
-  const a = await context.newPage(),
-    b = await context.newPage();
-  for (const [page, name] of [
-    [a, 'AdminL'],
-    [b, 'Andre'],
-  ]) {
-    await page.goto('/');
-    await page.locator('#player-name').fill(name);
-    await page.locator('#room-code').fill('BROWSER');
-    await page.locator('#play-online').click();
+  test.setTimeout(150000);
+  const context = await browser.newContext({ viewport: { width: 960, height: 640 } });
+  try {
+    await context.addInitScript(() => {
+      window.observedGestures = [];
+      window.WebSocket = new Proxy(window.WebSocket, {
+        construct(Target, args) {
+          const socket = new Target(...args);
+          socket.addEventListener('message', (event) => {
+            try {
+              const m = JSON.parse(event.data);
+              if (m.type === 'state')
+                for (const p of Object.values(m.state.players))
+                  if (p.gesture && m.state.time < p.gesture.start + p.gesture.duration) {
+                    window.observedGestures.push({
+                      name: p.name,
+                      kind: p.gesture.kind,
+                      npcId: p.gesture.npcId,
+                    });
+                    window.observedGestures = window.observedGestures.slice(-100);
+                  }
+            } catch {}
+          });
+          return socket;
+        },
+      });
+    });
+    const a = await context.newPage(),
+      b = await context.newPage();
+    for (const [page, name] of [
+      [a, 'AdminL'],
+      [b, 'Andre'],
+    ]) {
+      await page.goto('/');
+      await page.locator('#player-name').fill(name);
+      await page.locator('#room-code').fill('BROWSER');
+      await page.locator('#play-online').click();
+    }
+    await expect(a.locator('#session')).toContainText('2 AV 8');
+    await expect(b.locator('#session')).toContainText('2 AV 8');
+    await a.keyboard.press('F2');
+    await expect(a.locator('#admin-dialog')).toBeVisible();
+    await a.locator('#admin-target').selectOption({ label: 'Andre' });
+    await a.locator('#admin-level').fill('5');
+    await a.locator('#admin-credits').fill('100');
+    await a.locator('#admin-stats-form button').click();
+    await expect(a.locator('#admin-status')).toContainText('uppdaterats');
+    await expect(b.locator('#level')).toHaveText('NIVÅ 5');
+    await expect(a.locator('#level')).toHaveText('NIVÅ 1');
+    await capture(b);
+    await b.keyboard.press('e');
+    await b.locator('#camp-market').getByText('Råmaterial', { exact: true }).click();
+    await b
+      .locator('#camp-market .equipment-row')
+      .filter({ hasText: /^Järn ·/ })
+      .getByRole('button', { name: 'KÖP', exact: true })
+      .click();
+    await expect
+      .poll(() =>
+        a.evaluate(() =>
+          window.observedGestures.some(
+            (g) => g.name === 'Andre' && g.kind === 'trade' && g.npcId === 'maja',
+          ),
+        ),
+      )
+      .toBe(true);
+    await b.locator('#camp-dialog .close-dialog').click();
+    await a.locator('#admin-dialog .close-dialog').click();
+    await a.keyboard.press('Escape');
+    await a.locator('#pvp-toggle').click();
+    await expect(a.locator('#pvp-toggle')).toHaveText('AVAKTIVERA PVP');
+    await a.locator('#leave').click();
+    await expect(b.locator('#session')).toContainText('1 AV 8');
+  } finally {
+    await context.close();
   }
-  await expect(a.locator('#session')).toContainText('2 AV 8');
-  await expect(b.locator('#session')).toContainText('2 AV 8');
-  await a.keyboard.press('F2');
-  await expect(a.locator('#admin-dialog')).toBeVisible();
-  await a.locator('#admin-target').selectOption({ label: 'Andre' });
-  await a.locator('#admin-level').fill('5');
-  await a.locator('#admin-stats-form button').click();
-  await expect(a.locator('#admin-status')).toContainText('uppdaterats');
-  await expect(b.locator('#level')).toHaveText('NIVÅ 5');
-  await expect(a.locator('#level')).toHaveText('NIVÅ 1');
-  await a.locator('#admin-dialog .close-dialog').click();
-  await a.keyboard.press('Escape');
-  await a.locator('#pvp-toggle').click();
-  await expect(a.locator('#pvp-toggle')).toHaveText('AVAKTIVERA PVP');
-  await a.locator('#leave').click();
-  await expect(b.locator('#session')).toContainText('1 AV 8');
-  await context.close();
 });
 test('production client reloads and plays with network disabled after caching', async ({
   page,
