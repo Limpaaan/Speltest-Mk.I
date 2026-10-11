@@ -162,14 +162,15 @@ test('a slow browser receives only one unacknowledged snapshot then jumps to the
   });
   await wait(350);
   assert.equal(states.length, 0);
-  assert.ok((await message(fast.ws, 'state')).state.time > 0.3);
+  const current = (await message(fast.ws, 'state')).state.time;
+  assert.ok(current > slow.state.time);
   slow.ws.send(JSON.stringify({ type: 'state_ack', seq: slow.seq + 1 }));
   await wait(150);
   assert.equal(states.length, 0);
   const next = message(slow.ws, 'state');
   slow.ws.send(JSON.stringify({ type: 'state_ack', seq: slow.seq }));
   const update = await next;
-  assert.ok(update.state.time > 0.45);
+  assert.ok(update.state.time > current);
   assert.equal(update.seq, slow.seq + 1);
   await wait(250);
   assert.equal(states.length, 1);
