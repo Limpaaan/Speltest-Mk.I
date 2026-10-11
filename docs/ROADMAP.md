@@ -26,11 +26,11 @@ A*-navigation runt hinder, patruller och angriparprioritering. Maja med tre uppd
 ## Fortsatta RPG-system
 
 - Fler NPC:er och uppdragskedjor, förgrenad dialog, berättelseval och återtagna områden.
-- Rustningsplatser, affixer, föremålsset, handel, hantverk och ekonomibalans.
+- Rustningsplatser, affixer, föremålsset och vidare balans av handel och hantverk.
 - Djupare klassträd, specialiseringar, co-op-roller och fler fiendearketyper.
 - Varaktig offlinevärld, sparslots, export/import och versionsmigrering.
 
-## 0.4 — Beständig multiplayer
+## Framöver — Beständig multiplayer
 
 - Konton, autentiserade sessioner, återanslutning och serverägda karaktärer i databas.
 - Auktorisering, säker distribution, loggning, övervakning, backup och återställning.
@@ -45,3 +45,7 @@ Separata beslut behövs om spelmotor/plattform för fortsatt produktion, konstbu
 ## Levererat i 0.4
 
 Copernicus-terräng, tolkade omgivningshus, skog/sten med kollision, långsammare terrängberoende rörelse, sparade inställningar, genomskinliga sikten, sex olika vapentyper, granater, sex klasser, fyra NPC, fyra vanliga fiendefamiljer och olika bossattacker. Ytterligare OSM-punkter för Skogsbo skola och Åsbobacken. Arkitekturen är fortfarande förenklad; fotogranskning är inte genomförd där källor saknas.
+
+## Levererat i 0.5
+
+Fotobaserade tolkningar av Verket, Aaltohuset och Dalahästen; första besökbara bottenplanet med arkivuppdrag. Material och vapendelar som huvudsaklig loot, brukskronor och försäljare, fjorton funktionella vapendelar och materialbaserade recept. Klasspecialiteter, tunga utrustningskrav och talangträd med alternativa stöd-/anfallsgrenar. Se `EQUIPMENT.md` för regler och begränsningar. Fortsatt arbete: fler interiörer, djupare uppdragskedjor, klassbalans och beständiga onlinekaraktärer.

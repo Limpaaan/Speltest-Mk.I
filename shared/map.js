@@ -1,3 +1,11 @@
+import {
+  AALTO_WALLS,
+  AALTO_FURNITURE,
+  AALTO_UPPER,
+  AALTO_FLOOR,
+  inAalto,
+  aaltoRamp,
+} from './interiors.js';
 import { createScenery } from './scenery.js';
 import { terrainHeight } from './terrain.js';
 import geography from './geography.json' with { type: 'json' };
@@ -50,6 +58,9 @@ export function onBridge(x, z) {
 }
 // A bridge deck interpolates between surveyed endpoint surroundings. Deck clearance is a gameplay adaptation.
 export function groundHeight(x, z) {
+  if (inAalto(x, z)) return AALTO_FLOOR;
+  const ramp = aaltoRamp(x, z);
+  if (ramp !== null) return ramp;
   let height = terrainHeight(x, z);
   for (const b of MAP.bridges) {
     const [a, c] = b.points;
@@ -73,7 +84,13 @@ export function canStand(x, z) {
   )
     return false;
   if (
-    [...MAP.places, ...MAP.buildings, ...MAP.cover].some(
+    [
+      ...MAP.places.filter((p) => p.id !== 'aalto'),
+      ...AALTO_WALLS,
+      ...AALTO_FURNITURE,
+      ...MAP.buildings,
+      ...MAP.cover,
+    ].some(
       (p) =>
         p.w > 0 &&
         p.d > 0 &&
@@ -139,16 +156,23 @@ export function rayBoxDistance(origin, direction, min, max, range = Infinity) {
 export function raycastWorld(origin, direction, range) {
   let distance = range,
     hit = null;
-  for (const p of [...MAP.places, ...MAP.buildings, ...MAP.cover]) {
+  for (const p of [
+    ...MAP.places.filter((p) => p.id !== 'aalto'),
+    ...AALTO_WALLS,
+    ...AALTO_FURNITURE,
+    ...AALTO_UPPER,
+    ...MAP.buildings,
+    ...MAP.cover,
+  ]) {
     if (!p.w || !p.d) continue;
     const t = rayBoxDistance(
       origin,
       direction,
-      { x: p.x - p.w / 2, y: groundHeight(p.x, p.z) - 3, z: p.z - p.d / 2 },
+      { x: p.x - p.w / 2, y: p.base ?? groundHeight(p.x, p.z) - 3, z: p.z - p.d / 2 },
       {
         x: p.x + p.w / 2,
         y:
-          groundHeight(p.x, p.z) +
+          (p.base ?? groundHeight(p.x, p.z)) +
           p.h +
           (['cottage', 'school', 'warehouse'].includes(p.type) ? 2.2 : 0),
         z: p.z + p.d / 2,

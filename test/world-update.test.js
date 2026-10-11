@@ -156,6 +156,7 @@ test('medic heals nearby allies once per cooldown and engineer protection and wo
   assert.equal(ally.protection, 6);
   Object.assign(engineer, CAMP);
   engineer.scrap = 48;
+  Object.assign(engineer.materials, { iron: 10, wood: 5, springs: 3 });
   act(w, engineer.id, { type: 'craft', kind: 'rifle', cost: 0 });
   assert.equal(engineer.scrap, 0);
   assert.equal(engineer.inventory.at(-1).kind, 'rifle');

@@ -49,7 +49,7 @@ test('movement is finite, normalized and limited by server time', () => {
   assert.equal(cleanInput({ fire: 1 }).fire, false);
 });
 test('buildings and real river geometry block walking while a mapped bridge is traversable', () => {
-  assert.equal(canStand(MAP.places[0].x, MAP.places[0].z), false);
+  assert.equal(canStand(MAP.places[0].x, MAP.places[0].z - 7), false);
   const river = MAP.rivers.find((r) => {
     const x = (r.points[0][0] + r.points[1][0]) / 2,
       z = (r.points[0][1] + r.points[1][1]) / 2;
@@ -84,7 +84,9 @@ test('combat rewards personal loot, XP and progresses quests', () => {
   }
   assert.equal(p.kills, 5);
   assert.equal(p.pickups, 5);
-  assert.equal(p.inventory.length, 6);
+  assert.equal(p.inventory.length, 1);
+  assert.equal(p.materials.adhesive, 25);
+  assert.ok(p.credits > 0);
   assert.ok(p.level >= 2);
   assert.ok(p.quests.includes('defend'));
   assert.ok(p.quests.includes('salvage'));

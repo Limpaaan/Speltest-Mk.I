@@ -43,6 +43,7 @@ test('workshop uses server prices, enforces location and capacity, and caps armo
   const w = createWorld(),
     p = addPlayer(w, 'p', 'Dalmas', 'stalvakt');
   p.scrap = 500;
+  Object.assign(p.materials, { iron: 10, wood: 7, glass: 3 });
   p.level = 5;
   act(w, p.id, { type: 'craft', kind: 'scout', cost: 0, level: 30, rarity: 3 });
   assert.equal(p.scrap, 400);

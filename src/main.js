@@ -1,3 +1,9 @@
+import { PAINTS } from '../shared/artist.js';
+import { artistPanel } from './artist-ui.js';
+import { equipmentPanel, marketPanel } from './equipment-ui.js';
+import { WEAPON_RECIPES, hasMaterials, lootName, MATERIALS, ATTACHMENTS } from '../shared/items.js';
+import { nearbyCache, recipeText } from '../shared/economy.js';
+import { canEquip, armorLimit, BRANCH_ABILITIES, SPECIALTIES } from '../shared/talents.js';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, readSettings } from './settings.js';
 import {
   CAMP,
@@ -13,7 +19,7 @@ import {
 import { validateUsername, isAdmin, adminAction } from '../shared/admin.js';
 import './style.css';
 import { WorldView, drawMap } from './view.js';
-import { MAP, inArena, inSanctuary } from '../shared/map.js';
+import { MAP, inArena, inSanctuary, clearShot } from '../shared/map.js';
 import {
   CLASSES,
   RARITIES,
@@ -27,6 +33,7 @@ import {
   snapshot,
   maxHp,
   xpNeeded,
+  weaponStats,
   savePlayer,
   restorePlayer,
 } from '../shared/game.js';
@@ -115,7 +122,8 @@ function renderClasses() {
     b.setAttribute('aria-pressed', String(active));
   }
   const c = CLASSES[selected];
-  $('class-detail').textContent = `${c.subtitle}. ${c.description}`;
+  $('class-detail').textContent =
+    `${c.subtitle}. ${c.description} Fart ${c.speed} · ${c.hp} hälsa. Specialvapen: ${SPECIALTIES[selected].map((k) => WEAPONS[k].name).join(', ')} (snabbare omladdning). ${['stalvakt', 'bruksingenjor'].includes(selected) ? 'Tung klass: kulspruta och rustning 3 från början.' : 'Kulspruta och rustning 3 kräver talanger.'}`;
 }
 renderClasses();
 try {
@@ -367,11 +375,15 @@ window.addEventListener('keydown', (e) => {
   if (paused() || !pointerLocked()) return;
   keys.add(k);
   if (k === 'c') crouch = !crouch;
+  if (k === 'b') action({ type: 'spray' });
+  if (k === 'z') action({ type: 'special' });
+  if (k === 'l') action({ type: 'flashlight' });
   if (k === 'q') action({ type: 'ability' });
   if (k === 'e') {
     const npc = nearbyNpc(state.players[myId]);
     if (npc) openNpc(npc);
     else if (atCamp(state.players[myId])) openDialog($('camp-dialog'));
+    else if (nearbyCache(state.players[myId])) action({ type: 'search' });
     else action({ type: 'loot' });
   }
   if (k === 'g') action({ type: 'grenade' });
@@ -455,11 +467,21 @@ function renderInventory() {
     p.vitality,
     p.scrap,
     p.armor,
+    p.paint,
+    p.paintColor,
+    p.paintMotif,
+    p.materials,
+    p.attachments,
+    p.supplies,
+    p.skills,
+    p.credits,
+    p.level,
+    p.reload > 0,
   ]);
   if (signature === inventorySignature) return;
   inventorySignature = signature;
   $('inventory-stats').textContent =
-    `${p.scrap} skrot · ${p.points} talangpoäng · Eldkraft ${p.power} · Livskraft ${p.vitality} · Rustning ${p.armor || 0}/3 · ${p.inventory.length}/16 platser`;
+    `${p.credits} brukskronor · ${p.scrap} skrot · ${p.points} talangpoäng · Eldkraft ${p.power} · Livskraft ${p.vitality} · Rustning ${p.armor || 0}/${armorLimit(p)} · ${p.inventory.length}/16 platser`;
   $('talent-power').disabled = $('talent-vitality').disabled = p.points <= 0;
   $('inventory-items').replaceChildren();
   for (const item of p.inventory) {
@@ -471,12 +493,14 @@ function renderInventory() {
     title.textContent = item.name;
     title.style.color = RARITY_COLORS[item.rarity];
     const info = document.createElement('p');
-    info.textContent = `${RARITIES[item.rarity]} · Nivå ${item.level} · ${item.damage + p.power * 3} skada · ${WEAPONS[item.kind].range} m`;
+    const stats = weaponStats({ ...p, weapon: item });
+    info.textContent = `${RARITIES[item.rarity]} · Nivå ${item.level} · ${stats.damage.toFixed(1)} skada · ${stats.range} m · ${stats.mag} patroner · ${stats.reload.toFixed(2)} s omladdning`;
     desc.append(title, info);
     const equip = document.createElement('button');
     equip.className = 'small-button';
     equip.textContent = p.weapon.id === item.id ? 'UTRUSTAD' : 'UTRUSTA';
-    equip.disabled = p.weapon.id === item.id;
+    equip.disabled = p.weapon.id === item.id || !canEquip(p, item.kind);
+    if (!canEquip(p, item.kind)) equip.textContent = 'KRÄVER TUNG TRÄNING';
     equip.onclick = () => {
       action({ type: 'equip', id: item.id });
       renderInventory();
@@ -492,6 +516,11 @@ function renderInventory() {
     row.append(desc, equip, scrap);
     $('inventory-items').append(row);
   }
+  equipmentPanel($('equipment-panel'), p, (a) => {
+    action(a);
+    inventorySignature = '';
+    renderInventory();
+  });
 }
 function updateHUD() {
   const p = state.players[myId];
@@ -509,8 +538,11 @@ function updateHUD() {
   $('admin-open').hidden = !isAdmin(p);
   if ($('admin-dialog').open) renderAdmin();
   if ($('camp-dialog').open) renderCamp();
-  if ($('npc-dialog').open)
+  if ($('npc-dialog').open) {
     $('npc-message').textContent = state.time < p.messageUntil ? p.message : '';
+    if (!$('npc-market').hidden) marketPanel($('npc-market'), p, action);
+    if (!$('artist-panel').hidden) artistPanel($('artist-panel'), p, action);
+  }
   const contract = campaignStatus(p);
   $('campaign-title').textContent = contract.title;
   $('campaign-progress').textContent = contract.ready
@@ -524,31 +556,37 @@ function updateHUD() {
   $('xp-fill').style.width = `${(p.xp / xpNeeded(p)) * 100}%`;
   $('ability-name').textContent = c.ability;
   $('ability-cooldown').textContent =
-    p.abilityCooldown > 0 ? `${Math.ceil(p.abilityCooldown)} s` : 'REDO';
+    (p.abilityCooldown > 0 ? `${Math.ceil(p.abilityCooldown)} s` : 'REDO') +
+    (p.skills.includes('support_ability') || p.skills.includes('assault_ability')
+      ? ` · Z ${BRANCH_ABILITIES[p.classId][p.skills.includes('assault_ability') ? 1 : 0][0]} ${p.specialCooldown > 0 ? Math.ceil(p.specialCooldown) + ' s' : 'REDO'}`
+      : '');
   $('grenade-count').textContent = `G · Spränghandgranat m/56 × ${p.grenades ?? 0}`;
   $('weapon-name').textContent = p.weapon.name;
   $('weapon-rarity').textContent = RARITIES[p.weapon.rarity].toUpperCase();
   $('weapon-rarity').style.color = RARITY_COLORS[p.weapon.rarity];
   $('ammo').textContent = p.reload > 0 ? '↻' : p.ammo;
-  $('ammo-max').textContent =
-    p.reload > 0 ? `${p.reload.toFixed(1)} s` : `/ ${WEAPONS[p.weapon.kind].mag}`;
+  $('ammo-max').textContent = p.reload > 0 ? `${p.reload.toFixed(1)} s` : `/ ${weaponStats(p).mag}`;
   const message = storageWarning
     ? 'Lokal lagring är blockerad. Framsteg kan inte sparas på den här enheten.'
     : state.time < p.messageUntil
       ? p.message
       : '';
   $('notification').textContent = message;
-  const nearby = state.loot.find((l) => l.owner === myId && Math.hypot(l.x - p.x, l.z - p.z) < 12);
+  const nearby = state.loot.find(
+    (l) => l.owner === myId && Math.hypot(l.x - p.x, l.z - p.z) < 12 && clearShot(p, l),
+  );
   const npc = nearbyNpc(p);
   $('interact').textContent = npc
     ? `E · Prata med ${npc.name}`
     : atCamp(p)
       ? 'E · Prata med Maja / uppdrag och verkstad'
-      : inSanctuary(p)
-        ? 'WASD · Lämna samlingsplatsen för att inleda strid'
-        : nearby
-          ? `E · Bärga ${RARITIES[nearby.weapon.rarity].toLowerCase()} ${nearby.weapon.name}`
-          : '';
+      : nearbyCache(p)
+        ? `E · Sök ${nearbyCache(p).name}`
+        : inSanctuary(p)
+          ? 'WASD · Lämna samlingsplatsen för att inleda strid'
+          : nearby
+            ? `E · Bärga ${lootName(nearby)}`
+            : '';
   const place = [...MAP.places].sort(
     (a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z),
   )[0];
@@ -685,7 +723,7 @@ function renderAdmin(refresh = false) {
   }
   const target = state.players[$('admin-target').value];
   if (refresh && target) {
-    for (const key of ['level', 'xp', 'hp', 'scrap', 'power', 'vitality', 'points'])
+    for (const key of ['level', 'xp', 'hp', 'scrap', 'credits', 'power', 'vitality', 'points'])
       $(`admin-${key}`).value = Math.floor(target[key]);
     $('admin-item-level').value = target.level;
   }
@@ -719,7 +757,7 @@ $('admin-item-form').onsubmit = (e) => {
 $('admin-stats-form').onsubmit = (e) => {
   e.preventDefault();
   const stats = {};
-  for (const key of ['level', 'xp', 'hp', 'scrap', 'power', 'vitality', 'points'])
+  for (const key of ['level', 'xp', 'hp', 'scrap', 'credits', 'power', 'vitality', 'points'])
     stats[key] = Number($(`admin-${key}`).value);
   sendAdmin({ type: 'set_stats', targetId: $('admin-target').value, stats });
 };
@@ -739,6 +777,7 @@ for (const [kind, recipe] of Object.entries(RECIPES)) {
   $('workshop-recipes').append(button);
 }
 $('contract-action').onclick = () => action({ type: 'contract' });
+$('archive-action').onclick = () => action({ type: 'archive' });
 $('upgrade-armor').onclick = () => action({ type: 'armor' });
 function renderCamp() {
   const p = state.players[myId];
@@ -761,15 +800,29 @@ function renderCamp() {
   $('contract-action').disabled =
     status.complete || (p.campaign.active && !status.ready) || !atCamp(p);
   $('workshop-stats').textContent =
-    `${p.scrap} skrot · Rustning ${p.armor}/3 (${p.armor * 8}% skademinskning). Vapen tillverkas som ovanliga på din nuvarande nivå ${p.level}.`;
+    `${p.scrap} skrot · Rustning ${p.armor}/${armorLimit(p)} (${p.armor * 8 + (p.skills.includes('armor_training') ? 4 : 0)}% skademinskning). Vapen tillverkas som ovanliga på din nuvarande nivå ${p.level}.`;
   for (const [kind, recipe] of Object.entries(RECIPES)) {
-    $('craft-' + kind).textContent = `${recipe.name} · ${craftCost(p, kind)} skrot`;
+    $('craft-' + kind).textContent =
+      `${recipe.name} · ${craftCost(p, kind)} skrot + ${recipeText(WEAPON_RECIPES[kind])}`;
     $('craft-' + kind).disabled =
-      p.scrap < craftCost(p, kind) || p.inventory.length >= 16 || !atCamp(p);
+      p.scrap < craftCost(p, kind) ||
+      !hasMaterials(p, WEAPON_RECIPES[kind]) ||
+      p.inventory.length >= 16 ||
+      !atCamp(p);
   }
   $('upgrade-armor').textContent =
-    p.armor >= 3 ? 'RUSTNING FULLT FÖRSTÄRKT' : `FÖRSTÄRK BRUKSRUSTNING · ${armorCost(p)} SKROT`;
-  $('upgrade-armor').disabled = p.armor >= 3 || p.scrap < armorCost(p) || !atCamp(p);
+    p.armor >= armorLimit(p)
+      ? 'RUSTNING FULLT FÖRSTÄRKT'
+      : `FÖRSTÄRK BRUKSRUSTNING · ${armorCost(p)} SKROT`;
+  $('upgrade-armor').disabled = p.armor >= armorLimit(p) || p.scrap < armorCost(p) || !atCamp(p);
+  marketPanel($('camp-market'), p, action);
+  $('archive-action').disabled = p.archiveQuest !== 1;
+  $('archive-action').textContent =
+    p.archiveQuest === 2
+      ? 'EVAKUERINGSPLANEN RÄDDAD'
+      : p.archiveQuest === 1
+        ? 'LÄMNA IN · 120 KR + 100 XP'
+        : 'HITTA EVAKUERINGSPLANEN I AALTOHUSET';
   $('camp-message').textContent = state.time < p.messageUntil ? p.message : '';
 }
 
@@ -823,6 +876,11 @@ $('settings-reset').onclick = () => {
 applySettings();
 
 function openNpc(npc) {
+  $('artist-panel').hidden = npc.id !== 'anders';
+  $('npc-service').hidden = npc.id === 'anders';
+  if (npc.id === 'anders') artistPanel($('artist-panel'), state.players[myId], action);
+  $('npc-market').hidden = npc.id !== 'torsten';
+  if (npc.id === 'torsten') marketPanel($('npc-market'), state.players[myId], action);
   $('npc-name').textContent = npc.name;
   $('npc-text').textContent = npc.text;
   $('npc-service').textContent = npc.label;
@@ -837,3 +895,26 @@ $('admin-item-kind').replaceChildren(
     return option;
   }),
 );
+
+for (const [category, catalog] of Object.entries({
+  material: MATERIALS,
+  attachment: ATTACHMENTS,
+  paint: PAINTS,
+}))
+  for (const [key, item] of Object.entries(catalog)) {
+    const o = document.createElement('option');
+    o.value = category + ':' + key;
+    o.textContent = item.name;
+    $('admin-resource').append(o);
+  }
+$('admin-resource-form').onsubmit = (e) => {
+  e.preventDefault();
+  const [category, key] = $('admin-resource').value.split(':');
+  sendAdmin({
+    type: 'spawn_resource',
+    targetId: $('admin-target').value,
+    category,
+    key,
+    quantity: Number($('admin-resource-count').value),
+  });
+};

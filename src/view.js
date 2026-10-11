@@ -1,3 +1,7 @@
+import { buildArtist, renderPaint } from './art.js';
+import { lootColor } from '../shared/items.js';
+import { CACHES } from '../shared/economy.js';
+import { buildVerket, buildAalto, buildHorse } from './landmarks.js';
 import { ENEMY_TYPES } from '../shared/enemies.js';
 import { weaponModel } from './weapons.js';
 import { WEAPONS } from '../shared/weapons.js';
@@ -5,7 +9,7 @@ import { terrain, terrainHeight } from '../shared/terrain.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP, waterAt, segmentDistance, eyeHeight, groundHeight } from '../shared/map.js';
-import { CLASSES, RARITY_COLORS } from '../shared/game.js';
+import { CLASSES, RARITY_COLORS, weaponStats } from '../shared/game.js';
 import { surfaces, spruceMaterial } from './surfaces.js';
 import { CAMP, NPCS } from '../shared/progression.js';
 export class WorldView {
@@ -59,6 +63,15 @@ export class WorldView {
     this.buildMap();
     this.flush();
     this.buildWeapon();
+    this.lamp = new THREE.SpotLight('#fff1cf', 35, 45, 0.35, 0.5, 1);
+    this.scene.add(this.lamp, this.lamp.target);
+    this.cacheMeshes = CACHES.map((c) => {
+      const mesh = new THREE.Mesh(this.boxGeo, this.s.wood);
+      mesh.position.set(c.x, groundHeight(c.x, c.z) + 0.4, c.z);
+      mesh.scale.set(1.1, 0.8, 0.65);
+      this.scene.add(mesh);
+      return { c, mesh };
+    });
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -290,6 +303,10 @@ export class WorldView {
     this.vegetation();
     this.buildCamp();
     for (const npc of NPCS) {
+      if (npc.id === 'anders') {
+        this.artist = buildArtist(this);
+        continue;
+      }
       const actor = this.soldier(npc);
       actor.position.set(npc.x, groundHeight(npc.x, npc.z), npc.z);
       this.scene.add(actor);
@@ -310,6 +327,8 @@ export class WorldView {
     );
   }
   building(p) {
+    if (p.id === 'verket') return buildVerket(this, p);
+    if (p.id === 'aalto') return buildAalto(this, p);
     const s = this.s,
       works = p.type === 'works',
       mat =
@@ -396,64 +415,7 @@ export class WorldView {
       );
   }
   horse(p) {
-    // Original model based on the inspected municipal photograph; no photo textures are embedded.
-    const red = this.s.plaster.clone();
-    red.color.set('#e25f36');
-    const black = new THREE.MeshStandardMaterial({ color: '#272e29', roughness: 0.9 });
-    const sphere = new THREE.SphereGeometry(1, 24, 16);
-    this.static(sphere, red, p.x, 6.4, p.z, 4.4, 2.8, 1.65);
-    const leg = new THREE.CylinderGeometry(0.77, 0.52, 5.2, 14);
-    for (const x of [-2.8, 2.5])
-      for (const z of [-1.05, 1.05]) {
-        this.static(leg, red, p.x + x, 2.65, p.z + z);
-        const hoof = new THREE.CylinderGeometry(0.55, 0.57, 0.25, 14);
-        this.static(hoof, black, p.x + x, 0.2, p.z + z);
-        hoof.dispose();
-      }
-    leg.dispose();
-    this.static(sphere, red, p.x + 2.6, 9, p.z, 1.5, 3.6, 1.25);
-    this.static(sphere, red, p.x + 3.6, 11.2, p.z, 1.8, 1.1, 1.2);
-    this.box(p.x + 2.1, 12.8, p.z - 0.68, 0.45, 1, 0.5, red);
-    this.box(p.x + 2.1, 12.8, p.z + 0.68, 0.45, 1, 0.5, red);
-    sphere.dispose();
-    for (const side of [-1, 1]) {
-      const c = document.createElement('canvas');
-      c.width = 512;
-      c.height = 256;
-      const ctx = c.getContext('2d');
-      ctx.clearRect(0, 0, 512, 256);
-      for (let i = 0; i < 8; i++) {
-        const x = 40 + i * 62;
-        for (const [radius, color] of [
-          [43, '#e8e3c9'],
-          [34, '#317a65'],
-          [23, '#c4cb76'],
-        ]) {
-          ctx.fillStyle = color;
-          ctx.beginPath();
-          ctx.ellipse(x, 125, 29, radius, Math.sin(i) * 0.4, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.fillStyle = '#92603b';
-        ctx.beginPath();
-        ctx.arc(x, 125, 8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      const texture = new THREE.CanvasTexture(c);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(7, 2.8),
-        new THREE.MeshStandardMaterial({
-          map: texture,
-          transparent: true,
-          side: THREE.DoubleSide,
-          roughness: 1,
-        }),
-      );
-      m.position.set(p.x, groundHeight(p.x, p.z) + 7, p.z + side * 1.67);
-      this.scene.add(m);
-    }
-    this.sign('DALAHÄSTEN / AVESTA', p.x, 1, p.z + 3.5, 7);
+    buildHorse(this, p);
   }
   vegetation() {
     const dummy = new THREE.Object3D();
@@ -528,8 +490,8 @@ export class WorldView {
     parent.add(mesh);
     return mesh;
   }
-  rifle(kind = 'rifle') {
-    return weaponModel(kind, this.s, this.boxGeo);
+  rifle(kind = 'rifle', mods = {}) {
+    return weaponModel(kind, this.s, this.boxGeo, mods);
   }
   soldier(entity) {
     const group = new THREE.Group(),
@@ -618,9 +580,7 @@ export class WorldView {
     this.weaponScene = new THREE.Scene();
     this.weaponScene.add(new THREE.HemisphereLight('#e4e9d9', '#454e35', 3));
     this.weaponCamera = new THREE.PerspectiveCamera(65, 1, 0.025, 8);
-    this.weaponCache = new Map();
     this.weapon = this.rifle();
-    this.weaponCache.set('rifle', this.weapon);
     this.weaponScene.add(this.weapon);
     const glove = new THREE.MeshStandardMaterial({ color: '#43513d', roughness: 1 });
     const arm = new THREE.CapsuleGeometry(0.035, 0.25, 4, 8);
@@ -651,8 +611,8 @@ export class WorldView {
         if (e.loot) {
           mesh = new THREE.Group();
           const mat = new THREE.MeshStandardMaterial({
-            color: RARITY_COLORS[e.weapon.rarity],
-            emissive: RARITY_COLORS[e.weapon.rarity],
+            color: lootColor(e),
+            emissive: lootColor(e),
             emissiveIntensity: 0.25,
           });
           this.part(mesh, this.boxGeo, mat, 0, 0.2, 0, 0.65, 0.4, 0.45);
@@ -699,7 +659,7 @@ export class WorldView {
       if (shot.owner === myId && !this.seenShots.has(shot.id)) {
         this.seenShots.add(shot.id);
         fired = true;
-        this.recoil = WEAPONS[shot.kind]?.recoil || 0.06;
+        this.recoil = shot.recoil ?? WEAPONS[shot.kind]?.recoil ?? 0.06;
       }
       const geo = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(shot.x, shot.y ?? 1.4, shot.z),
@@ -736,6 +696,13 @@ export class WorldView {
       this.shots.add(mesh);
     }
     if (this.seenShots.size > 300) this.seenShots.clear();
+    for (const { c, mesh } of this.cacheMeshes) mesh.visible = !player?.searched.includes(c.id);
+    this.lamp.visible = Boolean(active && player?.hp > 0 && player?.flashlight);
+    if (this.artist) {
+      this.artist.arm.rotation.x = Math.sin(time * 3.5) * 0.14;
+      this.artist.arm.rotation.z = Math.cos(time * 2) * 0.12;
+    }
+    renderPaint(this, state, myId);
     this.recoil *= Math.exp(-dt * 12);
     this.ads = THREE.MathUtils.lerp(this.ads, controls.ads ? 1 : 0, Math.min(1, dt * 12));
     if (active && player) {
@@ -745,15 +712,21 @@ export class WorldView {
         player.z,
       );
       this.camera.rotation.set(controls.pitch ?? 0, (controls.yaw ?? Math.PI) + Math.PI, 0, 'YXZ');
-      const stats = WEAPONS[player.weapon.kind];
-      if (this.weapon.userData.kind !== player.weapon.kind) {
+      const stats = weaponStats(player);
+      const weaponKey = player.weapon.kind + JSON.stringify(player.weapon.mods || {});
+      if (this.weapon.userData.cacheKey !== weaponKey) {
         this.weaponScene.remove(this.weapon);
-        if (!this.weaponCache.has(player.weapon.kind))
-          this.weaponCache.set(player.weapon.kind, this.rifle(player.weapon.kind));
-        this.weapon = this.weaponCache.get(player.weapon.kind);
+        this.weapon.remove(this.flash, this.hands);
+        this.weapon.userData.geometries.forEach((g) => g.dispose());
+        this.weapon = this.rifle(player.weapon.kind, player.weapon.mods);
+        this.weapon.userData.cacheKey = weaponKey;
         this.weaponScene.add(this.weapon);
         this.weapon.add(this.flash, this.hands);
       }
+      this.lamp.position.copy(this.camera.position);
+      this.lamp.target.position
+        .copy(this.camera.position)
+        .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(30));
       this.flash.position.z = this.weapon.userData.muzzle;
       const baseFov = this.settings?.fov || 78;
       this.camera.fov = THREE.MathUtils.lerp(baseFov, baseFov / stats.zoom, this.ads);
@@ -780,7 +753,7 @@ export class WorldView {
           'visible',
           stats.sight === 'scope' && this.ads > 0.92 && reload < 0.05 && player.hp > 0,
         );
-      this.flash.visible = fired;
+      this.flash.visible = fired && !stats.suppressed;
       this.weapon.visible = player.hp > 0;
       this.sun.position.set(player.x - 70, 160, player.z + 70);
       this.sun.target.position.set(player.x, 0, player.z);
@@ -884,6 +857,10 @@ function mapBackground(size, expanded) {
   for (const n of [CAMP, ...NPCS]) ctx.fillRect(pos(n.x) - 2, pos(n.z) - 2, 4, 4);
   ctx.font = `${expanded ? 10 : 8}px Arial`;
   ctx.textAlign = 'center';
+  if (expanded) {
+    const artist = NPCS.find((n) => n.id === 'anders');
+    ctx.fillText('Anders · tillfällig ateljé', pos(artist.x), pos(artist.z) - 7);
+  }
   for (const p of MAP.places) {
     ctx.fillStyle = '#c5b887';
     ctx.fillRect(pos(p.x) - 3, pos(p.z) - 3, 6, 6);
@@ -910,7 +887,7 @@ export function drawMap(canvas, state, myId, expanded = false) {
   }
   for (const l of state.loot)
     if (l.owner === myId) {
-      ctx.fillStyle = RARITY_COLORS[l.weapon.rarity];
+      ctx.fillStyle = lootColor(l);
       ctx.fillRect(pos(l.x) - 1, pos(l.z) - 1, 2, 2);
     }
   for (const p of Object.values(state.players)) {

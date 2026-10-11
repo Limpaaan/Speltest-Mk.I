@@ -1,3 +1,4 @@
+import { ARTIST } from './artist.js';
 import { MAP, walkableNear } from './map.js';
 
 export const CAMP = { x: MAP.spawn.x + 4, z: MAP.spawn.z - 2, name: 'Maja – skiftledare' };
@@ -105,6 +106,7 @@ export function restoreCampaign(raw) {
 export const craftCost = (p, kind) =>
   Math.ceil(RECIPES[kind].cost * (p.classId === 'bruksingenjor' ? 0.8 : 1));
 export const NPCS = [
+  ARTIST,
   {
     id: 'torsten',
     name: 'Torsten – bruksrustmästare',

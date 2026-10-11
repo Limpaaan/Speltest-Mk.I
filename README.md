@@ -138,3 +138,11 @@ Höjddata är bearbetade Copernicus GLO-30 DSM, med egen licens och obligatorisk
 
 ![Terräng och tolkad bebyggelse vid Skogsbo](docs/images/terrain.png)
 ![Kikarsikte med fri sikt mot spelvärlden](docs/images/scope.png)
+
+## Nytt i 0.5 — fynd, vapendelar och talangval
+
+Vanliga fiender släpper främst material och vapendelar; hela vapen förekommer i 10% av deras fynd. Tolv material, fjorton vapendelar, brukskronor, handel hos Maja/Torsten och nya tillverkningsrecept ger fynden användning. **I** öppnar packning, montering och talangträd; **L** tänder monterad brukslampa och **Z** använder en upplåst klassförmåga. De sex klasserna får alternativa talanggrenar och utrustningskrav.
+
+Verket, Aaltohuset och Dalahästen har omarbetats efter ägarens fotografier. Aaltohusets bottenplan går att besöka genom den östra entrén; sök arkivet med **E** och lämna evakueringsplanen hos Maja. Interiören är en spelmässig tolkning. Se [utrustning och progression](docs/EQUIPMENT.md) och [bildreferenser](docs/VISUAL-REFERENCES.md).
+
+Anders Delbom säljer sex sprayfärger och ritar glassar/döskallar vid en **tillfällig ateljé på Axel Johnsons väg** (markerad på stora kartan). Välj färg och motiv i packningen, spraya med **B**. Placeringen vid exakt 117B väntar på en bekräftad adresspunkt. Hans dialog öppnar Booli-sökning för Odlargränd 16; något aktuellt fastighetsvärde har inte kunnat verifieras.

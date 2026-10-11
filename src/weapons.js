@@ -1,7 +1,11 @@
+import { ATTACHMENTS, validMods } from '../shared/items.js';
 import * as THREE from 'three';
 import { WEAPONS } from '../shared/weapons.js';
 // Original, deliberately simplified Swedish silhouettes. Optics are hollow geometry.
-export function weaponModel(kind, surfaces, boxGeo) {
+export function weaponModel(kind, surfaces, boxGeo, rawMods = {}) {
+  const mods = validMods(kind, rawMods),
+    optic = ATTACHMENTS[mods.optic],
+    sight = optic?.sight || WEAPONS[kind].sight;
   const root = new THREE.Group(),
     s = surfaces,
     geos = [];
@@ -41,7 +45,7 @@ export function weaponModel(kind, surfaces, boxGeo) {
           : lmg
             ? -0.82
             : -0.68;
-  const sightY = scout ? 0.19 : 0.115;
+  const sightY = sight === 'scope' ? 0.19 : optic ? 0.16 : 0.115;
   const action = new THREE.Group();
   root.add(action);
   box(
@@ -101,7 +105,7 @@ export function weaponModel(kind, surfaces, boxGeo) {
   if (lmg)
     for (let i = 0; i < 7; i++) box(s.rust, -0.09 - i * 0.015, 0.01, -0.03, 0.009, 0.025, 0.075);
   // Scope tube has no end caps or dark glass plane: world stays visible through it.
-  if (scout) {
+  if (sight === 'scope') {
     const optic = new THREE.CylinderGeometry(0.066, 0.13, 0.29, 24, 1, true);
     geos.push(optic);
     const opticMesh = part(optic, s.metal, 0, sightY, -0.15);
@@ -110,6 +114,13 @@ export function weaponModel(kind, surfaces, boxGeo) {
     ring(0.13, 0.009, 0, sightY, -0.3);
     box(s.metal, 0, 0.08, -0.13, 0.06, 0.08, 0.08);
     box(s.metal, 0, sightY + 0.14, -0.15, 0.04, 0.035, 0.045);
+  } else if (optic) {
+    ring(0.06, 0.009, 0, sightY, -0.04);
+    box(s.metal, 0, 0.065, -0.04, 0.08, 0.06, 0.06);
+    const dotGeo = new THREE.SphereGeometry(0.003, 8, 6);
+    geos.push(dotGeo);
+    part(dotGeo, s.rust, 0, sightY, -0.1);
+    if (sight === 'holographic') ring(0.017, 0.002, 0, sightY, -0.1);
   } else {
     const rear = 0.1,
       front = muzzle + 0.05;
@@ -122,6 +133,29 @@ export function weaponModel(kind, surfaces, boxGeo) {
     box(s.metal, 0, 0.035, front, 0.035, 0.09, 0.04);
     box(s.metal, 0, 0.067, rear, 0.06, 0.035, 0.025);
   }
+  if (mods.muzzle === 'suppressor') tube(0.043, 0.24, 0, -0.018, muzzle - 0.09);
+  if (mods.utility === 'flashlight') {
+    tube(0.03, 0.13, 0.08, -0.04, -0.35);
+    tube(0.026, 0.01, 0.08, -0.04, -0.42, false, s.windowLight);
+  }
+  if (mods.underbarrel === 'bipod')
+    for (const side of [-1, 1])
+      box(s.metal, side * 0.08, -0.18, -0.48, 0.018, 0.29, 0.02).rotation.z = side * 0.35;
+  if (mods.underbarrel?.includes('grip'))
+    box(s.wood, 0, -0.14, -0.32, 0.04, 0.18, 0.065).rotation.x =
+      mods.underbarrel === 'angled_grip' ? 0.65 : 0;
+  if (mods.magazine === 'extended_mag') magazine.scale.y *= 1.5;
+  if (mods.magazine === 'quick_mag') box(s.rust, 0, -0.29, 0, 0.08, 0.035, 0.1);
+  if (mods.stock)
+    box(
+      mods.stock === 'light_stock' ? s.metal : s.wood,
+      0,
+      -0.04,
+      0.49,
+      mods.stock === 'light_stock' ? 0.045 : 0.13,
+      0.17,
+      0.08,
+    );
   root.userData = {
     geometries: geos,
     magazine,

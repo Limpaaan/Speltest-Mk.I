@@ -1,3 +1,14 @@
+import { newArt, artistAction, restoreArt } from './artist.js';
+import {
+  applyMods,
+  WEAPON_RECIPES,
+  hasMaterials,
+  spendMaterials,
+  lootName,
+  validMods,
+} from './items.js';
+import { newEconomy, economyAction, rollDrop, collect, restoreEconomy, CACHES } from './economy.js';
+import { SPECIALTIES, canEquip, armorLimit, talentAction, restoreTalents } from './talents.js';
 import { ENEMY_TYPES } from './enemies.js';
 import { WEAPONS } from './weapons.js';
 export { WEAPONS } from './weapons.js';
@@ -132,7 +143,17 @@ export function xpNeeded(p) {
   return p.level * 100;
 }
 export function weaponStats(p) {
-  return { ...WEAPONS[p.weapon.kind], damage: p.weapon.damage + p.power * 3 };
+  const stats = applyMods({ ...WEAPONS[p.weapon.kind], damage: p.weapon.damage + p.power * 3 }, p);
+  if (SPECIALTIES[p.classId].includes(p.weapon.kind)) {
+    stats.reload *= 0.9;
+    if (p.skills.includes('weapon_training')) stats.damage *= 1.15;
+  }
+  if (p.specialBuff > 0 && p.skills.includes('assault_ability')) {
+    if (p.classId === 'bruksingenjor') stats.damage *= 1.4;
+    if (p.classId === 'skogsvandrare' && p.weapon.kind === 'scout') stats.damage *= 1.5;
+  }
+  if (p.weapon.kind === 'lmg' && p.skills.includes('heavy_training')) stats.reload *= 0.85;
+  return stats;
 }
 export function createWorld({ pvp = false, random = Math.random } = {}) {
   const w = {
@@ -195,6 +216,15 @@ export function addPlayer(w, id, name, classId) {
   if (typeof classId !== 'string' || !Object.hasOwn(CLASSES, classId)) classId = 'stalvakt';
   const weapon = makeWeapon(`w${w.nextId++}`, START_WEAPONS[classId]);
   const p = {
+    ...newEconomy(),
+    ...newArt(),
+    skills: [],
+    specialCooldown: 0,
+    specialBuff: 0,
+    camouflage: 0,
+    slagShield: 0,
+    bastion: 0,
+    moving: false,
     id,
     name:
       (typeof name === 'string' ? name : 'Dalmas').replace(/[\x00-\x1f<>]/g, '').slice(0, 24) ||
@@ -277,9 +307,12 @@ function hurt(w, target, damage) {
     0,
     target.hp -
       damage *
+        (target.slagShield > 0 ? 0.4 : target.bastion > 0 ? 0.5 : 1) *
         armor *
         (target.protection > 0 ? 0.7 : 1) *
-        (target.classId ? 1 - (target.armor || 0) * 0.08 : 1),
+        (target.classId
+          ? 1 - (target.armor || 0) * 0.08 - (target.skills.includes('armor_training') ? 0.04 : 0)
+          : 1),
   );
   if (target.classId && target.hp === 0)
     notice(w, target, 'Du föll för Avesta. Återvänd till samlingsplatsen.');
@@ -291,17 +324,30 @@ function killEnemy(w, e, p) {
   trackCampaign(p, 'kill', e);
   if (e.type === 'boss') p.bosses++;
   rewardXp(w, p, e.type === 'boss' ? 200 : 25);
-  const roll = w.random(),
-    rarity = e.type === 'boss' ? 3 : roll > 0.94 ? 2 : roll > 0.65 ? 1 : 0;
-  const kinds = Object.keys(WEAPONS),
-    kind = kinds[Math.floor(w.random() * kinds.length) % kinds.length];
+  p.credits += e.type === 'boss' ? 100 : 5 + Math.floor(w.random() * 8);
+  const drop = rollDrop(w.random);
+  if (e.type === 'boss' || drop.kind) {
+    drop.weapon = makeWeapon(
+      `w${w.nextId++}`,
+      drop.kind || Object.keys(WEAPONS)[Math.min(5, Math.floor(w.random() * 6))],
+      e.type === 'boss'
+        ? 3
+        : (() => {
+            const r = w.random();
+            return r > 0.94 ? 2 : r > 0.65 ? 1 : 0;
+          })(),
+      p.level,
+    );
+    delete drop.material;
+    delete drop.attachment;
+  }
   w.loot.push({
     id: `l${w.nextId++}`,
     x: e.x,
     z: e.z,
     owner: p.id,
     expires: w.time + 180,
-    weapon: makeWeapon(`w${w.nextId++}`, kind, rarity, p.level),
+    ...drop,
   });
   if (w.loot.length > 100) w.loot.shift();
   w.respawns.push({
@@ -338,8 +384,19 @@ function shoot(w, p) {
     p.reload = stats.reload;
     return;
   }
+  p.camouflage = 0;
+  for (const e of w.enemies)
+    if (Math.hypot(e.x - p.x, e.z - p.z) < stats.noise) {
+      e.targetId = p.id;
+      e.alertUntil = w.time + 6;
+    }
   p.ammo--;
-  p.cooldown = stats.delay / (p.classId === 'alvvakt' && p.buff > 0 ? 2 : 1);
+  p.cooldown =
+    stats.delay /
+    ((p.classId === 'alvvakt' && p.buff > 0) ||
+    (p.classId === 'stalvakt' && p.specialBuff > 0 && p.skills.includes('assault_ability'))
+      ? 2
+      : 1);
   const count = stats.pellets || 1;
   for (let i = 0; i < count; i++) {
     const spread = (stats.spread || 0) * (p.ads ? 0.35 : 1);
@@ -396,6 +453,8 @@ function traceShot(w, p, stats, yaw, pitch) {
     id: `s${w.nextId++}`,
     owner: p.id,
     kind: p.weapon.kind,
+    recoil: stats.recoil,
+    suppressed: stats.suppressed,
     x: p.x,
     y: origin.y,
     z: p.z,
@@ -413,12 +472,25 @@ function traceShot(w, p, stats, yaw, pitch) {
 export function act(w, id, action) {
   const p = w.players[id];
   if (!p || !action || typeof action !== 'object') return;
+  for (const key of [
+    'type',
+    'category',
+    'key',
+    'kind',
+    'slot',
+    'color',
+    'motif',
+    'npcId',
+    'id',
+    'stat',
+  ])
+    if (Object.hasOwn(action, key) && typeof action[key] !== 'string') return;
   if (action.type === 'respawn') {
     if (p.hp <= 0) {
       Object.assign(p, MAP.spawn, {
         hp: maxHp(p),
         reload: 0,
-        ammo: WEAPONS[p.weapon.kind].mag,
+        ammo: weaponStats(p).mag,
         input: cleanInput(),
         pvp: false,
       });
@@ -426,6 +498,25 @@ export function act(w, id, action) {
     return;
   }
   if (p.hp <= 0) return;
+  if (artistAction(w, p, action, notice)) return;
+  if (economyAction(w, p, action, { notice, makeWeapon, rewardXp, maxHp, weaponStats, questCheck }))
+    return;
+  if (
+    talentAction(w, p, action, {
+      notice,
+      maxHp,
+      inArena,
+      clearShot,
+      grenade: () => {
+        const count = w.grenades.length;
+        act(w, id, { type: 'grenade' });
+        if (w.grenades.length === count) return false;
+        w.grenades.at(-1).damage *= 1.5;
+        return true;
+      },
+    })
+  )
+    return;
   if (action.type === 'grenade' && p.grenades > 0 && p.grenadeCooldown <= 0 && !inSanctuary(p)) {
     p.grenades--;
     p.grenadeCooldown = 1;
@@ -447,6 +538,7 @@ export function act(w, id, action) {
   if (action.type === 'npc') {
     const npc = NPCS.find((n) => n.id === action.npcId);
     if (!npc || Math.hypot(p.x - npc.x, p.z - npc.z) > 5) return;
+    if (npc.service === 'paint') return notice(w, p, 'Anders: Välj färg i min butik.');
     if (npc.service === 'grenades') {
       if (p.scrap < 20 || p.grenades >= 6)
         return notice(w, p, 'Du behöver 20 skrot och plats för granater.');
@@ -487,20 +579,28 @@ export function act(w, id, action) {
       if (p.inventory.length >= 16)
         return notice(w, p, 'Packningen är full. Skrota ett vapen först.');
       if (p.scrap < recipe.cost) return notice(w, p, `Du behöver ${recipe.cost} skrot.`);
+      if (!hasMaterials(p, WEAPON_RECIPES[action.kind]))
+        return notice(w, p, 'Material saknas för vapnet.');
+      spendMaterials(p, WEAPON_RECIPES[action.kind]);
       p.scrap -= recipe.cost;
       p.inventory.push(makeWeapon(`w${w.nextId++}`, action.kind, 1, p.level));
       p.crafted++;
       return notice(w, p, `${recipe.name} tillverkad. Ovanlig, nivå ${p.level}.`);
     }
-    if (p.armor >= 3) return notice(w, p, 'Bruksrustningen är redan fullt förstärkt.');
+    if (p.armor >= armorLimit(p))
+      return notice(
+        w,
+        p,
+        'Rustningsgränsen är nådd. Lättare klasser behöver talangen Bruksrustning för nivå 3.',
+      );
     const cost = armorCost(p);
     if (p.scrap < cost) return notice(w, p, `Du behöver ${cost} skrot.`);
     p.scrap -= cost;
     p.armor++;
     return notice(w, p, `Bruksrustning ${p.armor}/3: ${p.armor * 8}% mindre inkommande skada.`);
   }
-  if (action.type === 'reload' && !p.reload && p.ammo < WEAPONS[p.weapon.kind].mag)
-    p.reload = WEAPONS[p.weapon.kind].reload;
+  if (action.type === 'reload' && !p.reload && p.ammo < weaponStats(p).mag)
+    p.reload = weaponStats(p).reload;
   if (action.type === 'ability' && p.abilityCooldown <= 0) {
     p.abilityCooldown = 18;
     p.buff = 6;
@@ -527,28 +627,27 @@ export function act(w, id, action) {
     notice(w, p, `${CLASSES[p.classId].ability}!`);
   }
   if (action.type === 'loot') {
-    const item = w.loot.find((l) => l.owner === id && Math.hypot(l.x - p.x, l.z - p.z) < 12);
+    const item = w.loot.find(
+      (l) => l.owner === id && Math.hypot(l.x - p.x, l.z - p.z) < 12 && clearShot(p, l),
+    );
     if (item) {
-      if (p.inventory.length >= 16)
-        return notice(w, p, 'Packningen är full. Skrota ett vapen först.');
-      p.inventory.push(item.weapon);
+      if (!collect(p, item)) return notice(w, p, 'Packningen är full.');
       p.pickups++;
       p.scrap += 5;
       w.loot = w.loot.filter((l) => l.id !== item.id);
       questCheck(w, p);
-      notice(
-        w,
-        p,
-        `${RARITIES[item.weapon.rarity]} ${item.weapon.name} bärgad. Öppna packningen med I.`,
-      );
+      notice(w, p, `${lootName(item)} bärgad. Öppna packningen med I.`);
     }
   }
   if (action.type === 'equip') {
     const item = p.inventory.find((i) => i.id === action.id);
+    if (item && !canEquip(p, item.kind))
+      return notice(w, p, 'Kulspruta kräver tung klass eller Tung vapenträning.');
     if (item && item.id !== p.weapon.id) {
       p.weapon = item;
       p.ammo = 0;
-      p.reload = WEAPONS[item.kind].reload;
+      p.reload = weaponStats(p).reload;
+      p.flashlight = false;
       p.cooldown = Math.max(p.cooldown, 0.5);
     }
   }
@@ -557,6 +656,8 @@ export function act(w, id, action) {
     if (item) {
       p.inventory = p.inventory.filter((i) => i.id !== item.id);
       p.scrap += 10 * (item.rarity + 1);
+      p.materials.iron = Math.min(999, p.materials.iron + 3);
+      p.materials.springs = Math.min(999, p.materials.springs + 1);
     }
   }
   if (action.type === 'heal' && p.scrap >= 15 && p.hp < maxHp(p)) {
@@ -580,16 +681,22 @@ export function tick(w, dt) {
   for (const p of Object.values(w.players)) {
     for (const key of [
       'cooldown',
+      'paintCooldown',
       'abilityCooldown',
       'buff',
       'grenadeCooldown',
       'protection',
       'intel',
+      'specialCooldown',
+      'specialBuff',
+      'camouflage',
+      'slagShield',
+      'bastion',
     ])
       p[key] = Math.max(0, p[key] - dt);
     if (p.reload > 0) {
       p.reload = Math.max(0, p.reload - dt);
-      if (p.reload === 0) p.ammo = WEAPONS[p.weapon.kind].mag;
+      if (p.reload === 0) p.ammo = weaponStats(p).mag;
     }
     if (p.hp <= 0) continue;
     const input = cleanInput(p.input);
@@ -597,6 +704,7 @@ export function tick(w, dt) {
     p.pitch = input.pitch;
     p.crouch = input.crouch;
     p.ads = input.ads;
+    p.moving = Math.hypot(input.x, input.z) > 0;
     p.sprinting =
       input.sprint &&
       !p.crouch &&
@@ -606,13 +714,29 @@ export function tick(w, dt) {
       p.stamina > 1;
     p.stamina = Math.max(
       0,
-      Math.min(100, p.stamina + (p.sprinting ? (p.classId === 'stalvakt' ? -20 : -24) : 18) * dt),
+      Math.min(
+        100,
+        p.stamina +
+          (p.specialBuff > 0 && p.classId === 'alvvakt' && p.skills.includes('assault_ability')
+            ? 18
+            : p.sprinting
+              ? p.classId === 'stalvakt'
+                ? -20
+                : -24
+              : 18) *
+            dt,
+      ),
     );
     move(
       p,
       input.x,
       input.z,
       CLASSES[p.classId].speed *
+        weaponStats(p).move *
+        (p.skills.includes('fieldcraft') ? 1.1 : 1) *
+        (p.specialBuff > 0 && p.classId === 'alvvakt' && p.skills.includes('assault_ability')
+          ? 1.6
+          : 1) *
         travelFactor(p.x, p.z, input.x, input.z) *
         (p.crouch ? 0.55 : p.sprinting ? 1.4 : 1) *
         (p.ads ? (p.classId === 'alvvakt' ? 0.85 : 0.7) : 1) *
@@ -634,7 +758,11 @@ export function tick(w, dt) {
     const stats = ENEMY_TYPES[e.type];
     const rider = e.landmark === 'horse';
     const aggroRange = boss ? 100 : 75;
-    const candidates = targets.filter((p) => Math.hypot(p.x - e.x, p.z - e.z) < aggroRange);
+    const candidates = targets.filter(
+      (p) =>
+        Math.hypot(p.x - e.x, p.z - e.z) < (p.camouflage > 0 ? 14 : aggroRange) &&
+        ((w.time < e.alertUntil && e.targetId === p.id) || clearShot(e, p)),
+    );
     const p =
       (w.time < e.alertUntil && candidates.find((p) => p.id === e.targetId)) || candidates[0];
     if (e.windup > 0) {
@@ -770,10 +898,26 @@ export function snapshot(w) {
     shots: w.shots,
     grenades: w.grenades,
     blasts: w.blasts,
+    caches: CACHES,
   };
 }
 export function savePlayer(p) {
   return {
+    ...Object.fromEntries(
+      [
+        'paint',
+        'paintings',
+        'paintColor',
+        'paintMotif',
+        'materials',
+        'attachments',
+        'supplies',
+        'credits',
+        'searched',
+        'archiveQuest',
+        'skills',
+      ].map((k) => [k, p[k]]),
+    ),
     version: 1,
     classId: p.classId,
     level: p.level,
@@ -842,6 +986,7 @@ export function restorePlayer(w, p, save) {
         Math.max(1, Math.min(30, Math.floor(finite(i.level, 1)))),
       ),
     );
+    p.inventory.forEach((item, i) => (item.mods = validMods(item.kind, items[i].mods)));
     p.weapon =
       p.inventory[
         Math.max(
@@ -857,7 +1002,19 @@ export function restorePlayer(w, p, save) {
   p.quests = Array.isArray(save.quests)
     ? [...new Set(save.quests.filter((q) => ['defend', 'salvage', 'boss'].includes(q)))]
     : [];
+  restoreEconomy(p, save);
+  restoreArt(w, p, save);
+  restoreTalents(p, save.skills);
+  p.armor = Math.min(p.armor, armorLimit(p));
+  if (!canEquip(p, p.weapon.kind)) {
+    const allowed = p.inventory.find((i) => canEquip(p, i.kind));
+    if (allowed) p.weapon = allowed;
+    else {
+      p.weapon = makeWeapon(`w${w.nextId++}`, START_WEAPONS[p.classId]);
+      p.inventory[0] = p.weapon;
+    }
+  }
   p.hp = maxHp(p);
-  p.ammo = WEAPONS[p.weapon.kind].mag;
+  p.ammo = weaponStats(p).mag;
   return true;
 }

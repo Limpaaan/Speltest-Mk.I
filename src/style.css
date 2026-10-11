@@ -650,3 +650,32 @@ body.aiming #crosshair {
 #classes {
   grid-template-columns: repeat(3, 1fr);
 }
+.equipment-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  border-bottom: 1px solid #ffffff20;
+  padding: 0.55rem 0;
+}
+.equipment-row p {
+  flex: 1 1 240px;
+  margin: 0;
+  line-height: 1.5;
+}
+#equipment-panel h3 {
+  margin-top: 1.5rem;
+}
+#camp-market details,
+#npc-market details {
+  padding: 0.7rem 0;
+}
+#camp-market summary,
+#npc-market summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+#ability-cooldown {
+  white-space: normal;
+  max-width: 320px;
+}

@@ -46,3 +46,9 @@ Node 24, låsta npm-beroenden, Chromium och vanliga shellverktyg räcker. npm-ca
 `data/avesta-osm.json` innehåller det daterade OSM-utdraget. `node scripts/build-map.js` projicerar det deterministiskt till `shared/geography.json`. `shared/map.js` använder samma vägar, vatten och landmärken på klient och server. Geografiska avstånd komprimeras 1:4. Vattenytor används där de finns; älvlinjer får förenklade bredder. Vägbroar tillåter passage genom vattenkollisionen. Sex landmärkespositioner kommer från OSM; två är märkta som ungefärliga. Byggnadsmodellerna är fortfarande tolkningar.
 
 Version 0.4 delar även vapendefinitioner, fiendefamiljer och NPC-tjänster mellan klient och server. Granater simuleras auktoritativt med stubin, förenklade studsar, sikttest och PvP-kontroll. Inställningar är lokala presentationsval och ger inte klienten rätt att ändra spelstatistik. Spanarens kartmarkeringar är en spelregel, inte nätverkssekretess: klienten får fortfarande fiendetillstånd.
+
+## Utrustning och interiörer (0.5)
+
+`shared/items.js` definierar material, vapendelar, passform och modifierade vapenegenskaper. `shared/economy.js` hanterar serverägda priser/recept, begränsade lager, handel, personliga söklådor och arkivuppdraget. `shared/talents.js` definierar talangkedjor, alternativa grenar och klassförmågor. `shared/interiors.js` delar Aaltohusets väggar, bjälklag och golvnivå mellan gångkollision, raycasts och modellen. `src/landmarks.js` innehåller egenbyggd fototolkad geometri. Ingen tredjepartsbildtextur eller ny extern drifttjänst behövs.
+
+Specialiserade tester täcker fördelning av drops, ekonomi, materialkostnader, kapacitet, kompatibilitet, magasin/omladdning, talangförutsättningar, alla klassers specialförmågor, interiörkollision och sparmigrering. Webbläsartester genomför handel/montering/talangval och går via tangentbordsstyrning in i Aaltohuset på en riktig multiplayer-server.

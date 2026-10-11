@@ -139,7 +139,13 @@ test('Maja offers a contract and workshop purchases survive offline reload', asy
   await page.evaluate(() =>
     localStorage.setItem(
       'avesta-save-v1-stalvakt',
-      JSON.stringify({ version: 1, classId: 'stalvakt', level: 2, scrap: 200 }),
+      JSON.stringify({
+        version: 1,
+        classId: 'stalvakt',
+        level: 2,
+        scrap: 200,
+        materials: { iron: 10, wood: 5, springs: 3 },
+      }),
     ),
   );
   await page.locator('#player-name').fill('Verkstadsbesökare');

@@ -1,3 +1,5 @@
+import { PAINTS } from './artist.js';
+import { MATERIALS, ATTACHMENTS, attachmentCount } from './items.js';
 import { act, makeWeapon, maxHp, notice, RARITIES, WEAPONS, xpNeeded } from './game.js';
 const object = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const integer = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
@@ -18,12 +20,30 @@ export function adminAction(world, actorId, action) {
   const actor = Object.hasOwn(world.players, actorId) ? world.players[actorId] : null;
   if (!isAdmin(actor)) return fail('Endast AdminL har tillgång till fuskmenyn.');
   if (!object(action)) return fail('Ogiltigt kommando.');
+  for (const key of ['type', 'category', 'key', 'kind'])
+    if (Object.hasOwn(action, key) && typeof action[key] !== 'string')
+      return fail('Ogiltigt kommando.');
   const id = action.targetId ?? actorId;
   if (typeof id !== 'string' || !Object.hasOwn(world.players, id))
     return fail('Spelaren finns inte i rummet.');
   const target = world.players[id];
   let message;
-  if (action.type === 'spawn_item') {
+  if (action.type === 'spawn_resource') {
+    const key = action.key,
+      n = action.quantity;
+    if (!integer(n, 1, 999)) return fail('Ogiltigt antal.');
+    if (action.category === 'material' && Object.hasOwn(MATERIALS, key)) {
+      if (target.materials[key] + n > 999) return fail('Materialgränsen är 999.');
+      target.materials[key] += n;
+    } else if (action.category === 'attachment' && Object.hasOwn(ATTACHMENTS, key)) {
+      if (attachmentCount(target) + n > 24) return fail('Högst 24 lösa vapendelar.');
+      target.attachments[key] = (target.attachments[key] || 0) + n;
+    } else if (action.category === 'paint' && Object.hasOwn(PAINTS, key)) {
+      if (target.paint[key] + n > 10) return fail('Högst 10 burkar per färg.');
+      target.paint[key] += n;
+    } else return fail('Okänd resurstyp.');
+    message = `${n} föremål skapade åt ${target.name}.`;
+  } else if (action.type === 'spawn_item') {
     if (
       !Object.hasOwn(WEAPONS, action.kind) ||
       !integer(action.rarity, 0, RARITIES.length - 1) ||
@@ -49,6 +69,7 @@ export function adminAction(world, actorId, action) {
       xp: [0, xpNeeded(proposed)],
       hp: [0, maxHp(proposed)],
       scrap: [0, 99999],
+      credits: [0, 99999],
       power: [0, 29],
       vitality: [0, 29],
       points: [0, 29],

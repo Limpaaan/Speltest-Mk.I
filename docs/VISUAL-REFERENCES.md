@@ -30,7 +30,7 @@ godkännandegranskning avslog en permanent ändring av Chromiums certifikatlager
 Ingen sådan ändring gjordes och TLS-verifiering har inte stängts av. Den nya miljön
 behöver dessutom aktiverad nätverksåtkomst för de sparade kartdomänerna.
 
-Aalto-husets exteriör är ännu inte verifierad mot en tillförlitlig bildreferens.
+Aalto-husets exteriör har nu jämförts med ägarens uppladdade fotografier (se nedan).
 Plushusets och Åsbos positioner är fortfarande ungefärliga. Nästa bildgranskning
 bör dokumentera fasadfärg, våningsantal, taksilhuett, entrésida och orientering för
 varje landmärke, med käll-URL och granskningsdatum. Texturerade platshållare ska inte
@@ -39,3 +39,15 @@ presenteras som exakta rekonstruktioner.
 ## Uppdatering 8 oktober 2026
 
 Nya försök mot Google Maps och Avesta kommun fick HTTP 403 från proxyn. Inga nya bilder eller Street View-panoraman granskades. Skogsbo skolbyggnader är därför uttryckligen tolkade vid källbelagda OSM-centrum. Ägaren har erbjudits att komplettera med lokala bilder för nästa arkitekturpass, exempelvis Avesta kyrka.
+
+## Ägarens fotoreferenser — 0.5, 8 oktober 2026
+
+Sju fotografier granskades direkt i konversationen: tre av Verket, tre av Aaltohuset och ett av Dalahästen i Åsbo handelsområde. Fotograf/ursprungs-URL medföljde inte. Fotofilerna har inte kopierats till repot eller använts som speltexturer; modeller, målning och material är egenbyggda.
+
+- **Verket:** mörkt murverk, lång låg ugnshall, två olika höga stegade skorstenar med kragar, rundbågade spröjsfönster, silvergrå plåttak, hög bakre hall, vinklad kanal och lägre sadeltaksannex. Den nya modellen återger dessa huvuddrag.
+- **Aaltohuset:** mörkblå vertikalt räfflad fasad, horisontella fönsterband med ljusa paneler, högt smalt torn, asymmetrisk krona, ljusa vertikala ribbor, låga butiksflyglar och vit text. Den tidigare ljusa generiska fasaden är ersatt. Spelinteriören och rampen är påhittade; fotografierna styr bara exteriörens huvuddrag.
+- **Dalahästen:** röd rundad kropp, hög hals, bred mule, avsmalnande ben med mörka hovar och kurbits i vitt, grönt, turkost och gult. Egen kurbitsmålning följer modellens kroppsform.
+
+Mått, orientering, detaljer och proportioner är fortfarande spelmässiga tolkningar inom kartans befintliga utrymme. Fotografierna ersätter inte inmätning eller planritningar. Bilder på fler entréer och interiörer kan förbättra nästa modellpass. Street View har inte använts i detta pass.
+
+Anders Delboms konstnärsfigur och två stafflimotiv är egenbyggda och stiliserade; inga porträtt eller konstverk från en verklig person används. Axel Johnsons väg är källbelagd i det sparade OSM-underlaget (way/56226492), men husnummer 117B är inte verifierat. Därför används en markerad tillfällig ateljé tills en adresspunkt finns.

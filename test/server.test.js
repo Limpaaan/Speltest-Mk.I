@@ -189,6 +189,16 @@ test('Pages-origin clients can join the deployment server and crafting stays aut
   response = message(ws, 'admin_result');
   ws.send(JSON.stringify({ type: 'admin', action: { type: 'set_stats', stats: { scrap: 100 } } }));
   assert.equal((await response).ok, true);
+  for (const [key, quantity] of Object.entries({ iron: 10, wood: 5, springs: 3 })) {
+    response = message(ws, 'admin_result');
+    ws.send(
+      JSON.stringify({
+        type: 'admin',
+        action: { type: 'spawn_resource', category: 'material', key, quantity },
+      }),
+    );
+    assert.equal((await response).ok, true);
+  }
   response = message(ws, 'state');
   ws.send(
     JSON.stringify({

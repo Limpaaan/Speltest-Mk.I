@@ -71,6 +71,36 @@ export function surfaces() {
         ctx.fillStyle = '#31352c18';
         ctx.fillRect(random() * 256, random() * 256, 1 + random() * 4, 30 + random() * 100);
       }
+    if (kind === 'slag') {
+      ctx.fillStyle = '#8b8976';
+      ctx.fillRect(0, 0, 256, 256);
+      for (let row = 0; row < 12; row++)
+        for (let col = -1; col < 7; col++) {
+          const x = col * 43 + (row % 2) * 21,
+            y = row * 22;
+          const n = Math.floor(45 + random() * 37);
+          ctx.fillStyle = `rgb(${n + 9},${n + 7},${n})`;
+          ctx.fillRect(x + 1, y + 1, 40 + random() * 2, 19 + random());
+          ctx.fillStyle = '#c0b99d25';
+          ctx.fillRect(x + 3, y + 2, 33, 2);
+          for (let k = 0; k < 8; k++) {
+            ctx.fillStyle = random() > 0.5 ? '#d1bb8930' : '#1a221f40';
+            ctx.fillRect(x + random() * 40, y + random() * 19, 2 + random() * 4, 2);
+          }
+        }
+    }
+    if (kind === 'ribbed') {
+      for (let x = 0; x < 256; x += 7) {
+        ctx.fillStyle = '#171e2a';
+        ctx.fillRect(x, 0, 2, 256);
+        ctx.fillStyle = '#808791';
+        ctx.fillRect(x + 2, 0, 1, 256);
+      }
+      for (let y = 0; y < 256; y += 43) {
+        ctx.fillStyle = '#212932';
+        ctx.fillRect(0, y, 256, 1);
+      }
+    }
     if (kind === 'wood')
       for (let x = 0; x < 256; x += 32) {
         ctx.fillStyle = '#222920';
@@ -83,6 +113,21 @@ export function surfaces() {
     return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.94 });
   };
   return {
+    slagStone: make('#59574b', 'slag'),
+    archBrick: make('#8a7057', 'brick'),
+    aaltoBlue: make('#313e55', 'ribbed'),
+    ivory: make('#d4d3c9', 'wall'),
+    zinc: new THREE.MeshStandardMaterial({ color: '#939f9f', roughness: 0.62, metalness: 0.35 }),
+    worksGlass: new THREE.MeshStandardMaterial({
+      color: '#86938b',
+      roughness: 0.65,
+      metalness: 0.15,
+    }),
+    windowLight: new THREE.MeshStandardMaterial({
+      color: '#96aaaf',
+      roughness: 0.3,
+      metalness: 0.35,
+    }),
     soil: make('#64604b', 'soil'),
     asphalt: make('#454b45', 'soil'),
     concrete: make('#9d9b85', 'wall'),

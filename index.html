@@ -18,7 +18,7 @@
     <main id="menu">
       <header class="masthead">
         <a class="wordmark" href="/">A<span> / </span>SS</a
-        ><span class="edition">SPELBAR PROTOTYP <b>0.4</b></span
+        ><span class="edition">SPELBAR PROTOTYP <b>0.5</b></span
         ><span class="coordinate">DALARNA, SVERIGE</span
         ><button id="settings-menu" class="small-button">INSTÄLLNINGAR</button>
       </header>
@@ -120,7 +120,9 @@
       <div class="controls">
         <span><kbd>WASD</kbd> FÖRFLYTTA</span><span><kbd>MUS</kbd> SIKTA & SKJUT</span
         ><span><kbd>R</kbd> LADDA</span><span><kbd>E</kbd> BÄRGA</span
-        ><span><kbd>H</kbd> LÄK / 15 SKROT</span><span><kbd>G</kbd> GRANAT</span>
+        ><span><kbd>H</kbd> LÄK / 15 SKROT</span><span><kbd>G</kbd> GRANAT</span
+        ><span><kbd>L</kbd> LAMPA</span><span><kbd>Z</kbd> SPECIAL</span
+        ><span><kbd>B</kbd> SPRAY</span>
       </div>
     </section>
     <dialog id="inventory-dialog">
@@ -137,6 +139,7 @@
         ><button id="talent-vitality" class="secondary">+ Livskraft</button>
       </div>
       <div id="inventory-items"></div>
+      <div id="equipment-panel"></div>
       <p class="muted">
         Skrota oanvända vapen. Tryck H i spelet för att använda 15 skrot och återfå 50 hälsa.
       </p>
@@ -160,6 +163,10 @@
       <p id="workshop-stats"></p>
       <div id="workshop-recipes" class="workshop-recipes"></div>
       <button id="upgrade-armor" class="secondary"></button>
+      <h3>Aaltohusets arkiv</h3>
+      <p>Gå in genom den östra entrén, sök arkivskåpet och rädda evakueringsplanen åt Maja.</p>
+      <button id="archive-action" class="secondary">LÄMNA IN EVAKUERINGSPLANEN</button>
+      <div id="camp-market"></div>
       <p id="camp-message" role="status"></p>
     </dialog>
     <dialog id="pause-dialog">
@@ -208,12 +215,32 @@
         /></label>
         <button type="submit">SKAPA I SPELARENS PACKNING</button>
       </form>
+      <form id="admin-resource-form">
+        <h3>Material och vapendelar</h3>
+        <select id="admin-resource"></select
+        ><label
+          >Antal<input
+            id="admin-resource-count"
+            type="number"
+            min="1"
+            max="999"
+            value="1"
+            required /></label
+        ><button type="submit">SKAPA RESURSER</button>
+      </form>
       <form id="admin-stats-form">
         <h3>Spelarstatistik</h3>
         <div class="admin-grid">
           <label>Nivå<input id="admin-level" type="number" min="1" max="30" required /></label
           ><label>XP<input id="admin-xp" type="number" min="0" max="3000" required /></label
           ><label>Hälsa<input id="admin-hp" type="number" min="0" max="1000" required /></label
+          ><label
+            >Brukskronor<input
+              id="admin-credits"
+              type="number"
+              min="0"
+              max="99999"
+              required /></label
           ><label>Skrot<input id="admin-scrap" type="number" min="0" max="99999" required /></label
           ><label>Eldkraft<input id="admin-power" type="number" min="0" max="29" required /></label
           ><label
@@ -233,6 +260,8 @@
       <h2 id="npc-name"></h2>
       <p id="npc-text"></p>
       <button id="npc-service" class="primary"></button>
+      <div id="npc-market" hidden></div>
+      <div id="artist-panel" hidden></div>
       <p id="npc-message" role="status"></p>
     </dialog>
     <dialog id="settings-dialog">

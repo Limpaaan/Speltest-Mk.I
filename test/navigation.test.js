@@ -45,6 +45,8 @@ test('a live enemy reaches a player around an actual building while idle guards 
   const player = addPlayer(world, 'p', 'Dalmas', 'stalvakt');
   Object.assign(player, { x: building.x + building.w / 2 + 5, z: building.z, hp: 100000 });
   const enemy = spawnEnemy(world, building.x - building.w / 2 - 5, building.z);
+  enemy.targetId = player.id;
+  enemy.alertUntil = 999; // A previously alerted guard pursues around cover.
   const start = { x: enemy.x, z: enemy.z };
   for (let i = 0; i < 600; i++) {
     tick(world, 0.05);
