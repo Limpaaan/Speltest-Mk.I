@@ -60,22 +60,6 @@ export function surfaces() {
       ctx.fillStyle = `rgba(${shade},${shade},${shade},${random() * 0.14})`;
       ctx.fillRect(random() * 256, random() * 256, random() * 3 + 0.4, random() * 3 + 0.4);
     }
-    if (kind === 'soil') {
-      for (let i = 0; i < 180; i++) {
-        const x = random() * 256,
-          y = random() * 256;
-        ctx.fillStyle = ['#9b94723a', '#3a4c353d', '#bdac8333', '#202b2338'][i % 4];
-        ctx.beginPath();
-        ctx.ellipse(x, y, 3 + random() * 12, 2 + random() * 8, random() * 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#3b34284a';
-        ctx.lineWidth = 0.7;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + random() * 14, y + random() * 12);
-        ctx.stroke();
-      }
-    }
     if (kind === 'asphalt') {
       ctx.strokeStyle = '#171d1c';
       ctx.lineWidth = 1.1;
@@ -158,10 +142,18 @@ export function surfaces() {
       roughness: kind === 'asphalt' ? 0.72 : 0.94,
     });
   };
+  const groundMap = new THREE.TextureLoader().load(
+    `${import.meta.env.BASE_URL}textures/avesta-ground-v08.webp`,
+  );
+  groundMap.wrapS = groundMap.wrapT = THREE.RepeatWrapping;
+  groundMap.colorSpace = THREE.SRGBColorSpace;
+  groundMap.anisotropy = 8;
+  groundMap.minFilter = THREE.LinearMipmapLinearFilter;
+  const soil = new THREE.MeshStandardMaterial({ map: groundMap, color: '#ffffff', roughness: 1 });
   return {
     slagStone: make('#59574b', 'slag'),
     archBrick: make('#8a7057', 'brick'),
-    aaltoBlue: make('#313e55', 'ribbed'),
+    aaltoBlue: make('#252e3b', 'ribbed'),
     ivory: make('#d4d3c9', 'wall'),
     zinc: new THREE.MeshStandardMaterial({ color: '#939f9f', roughness: 0.62, metalness: 0.35 }),
     worksGlass: new THREE.MeshStandardMaterial({
@@ -174,7 +166,8 @@ export function surfaces() {
       roughness: 0.3,
       metalness: 0.35,
     }),
-    soil: make('#64604b', 'soil'),
+    soil,
+    gravel: make('#777766', 'gravel'),
     asphalt: make('#414744', 'asphalt'),
     concrete: make('#9d9b85', 'wall'),
     plaster: make('#c4c3af', 'wall'),

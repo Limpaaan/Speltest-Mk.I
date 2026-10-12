@@ -26,7 +26,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'npm run start',
+    command: 'node server/index.js --production',
     env: {
       PORT: '4173',
       HOST: '127.0.0.1',

@@ -9,7 +9,7 @@ import {
   restorePlayer,
   makeWeapon,
 } from '../shared/game.js';
-import { MAP, groundHeight, eyeHeight } from '../shared/map.js';
+import { MAP, groundHeight, eyeHeight, clearShot, canStand } from '../shared/map.js';
 import { CAMP, campaignStatus } from '../shared/progression.js';
 
 test('Maja gives a location contract with a one-time reward and saves its next step', () => {
@@ -90,7 +90,12 @@ test('armor reduces real incoming damage and the campaign tracks the correct bos
     p = addPlayer(w, 'p', 'Dalmas', 'stalvakt');
   const e = w.enemies.find((e) => e.landmark === 'verket');
   w.enemies = [e];
-  Object.assign(p, { x: e.x, z: e.z + 20, armor: 3 });
+  const angle = Array.from({ length: 64 }, (_, i) => (i * Math.PI) / 32).find((a) => {
+    const q = { x: e.x + Math.sin(a) * 20, z: e.z + Math.cos(a) * 20 };
+    return canStand(q.x, q.z) && clearShot(q, e);
+  });
+  assert.notEqual(angle, undefined, 'a clear walkable firing position near the boss');
+  Object.assign(p, { x: e.x + Math.sin(angle) * 20, z: e.z + Math.cos(angle) * 20, armor: 3 });
   const before = p.hp;
   e.windup = 0.01;
   tick(w, 0.05);
@@ -101,7 +106,7 @@ test('armor reduces real incoming damage and the campaign tracks the correct bos
   e.windup = 0;
   e.cooldown = 10;
   p.input = {
-    aim: Math.PI,
+    aim: Math.atan2(e.x - p.x, e.z - p.z),
     pitch: Math.atan2(groundHeight(e.x, e.z) + 1.7 - groundHeight(p.x, p.z) - eyeHeight(p), 20),
     fire: true,
   };

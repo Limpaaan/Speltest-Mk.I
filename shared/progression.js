@@ -1,5 +1,5 @@
 import { ARTIST } from './artist.js';
-import { MAP, walkableNear } from './map.js';
+import { MAP, walkableNear, HUB } from './map.js';
 
 export const CAMP = { x: MAP.spawn.x + 4, z: MAP.spawn.z - 2, name: 'Maja – skiftledare' };
 import { CONTRACTS, STORY_SITES } from './story.js';
@@ -96,7 +96,10 @@ export const NPCS = [
     id: 'torsten',
     name: 'Torsten – bruksrustmästare',
     classId: 'bruksingenjor',
-    ...walkableNear(MAP.spawn.x + 18, MAP.spawn.z + 4),
+    ...walkableNear(
+      HUB.stations.find((n) => n.id === 'torsten').x,
+      HUB.stations.find((n) => n.id === 'torsten').z,
+    ),
     text: 'Verket må stå still, men mina händer gör det inte. Tre spränghandgranater kostar 20 skrot. Bär högst sex.',
     service: 'grenades',
     label: 'FYLL PÅ TRE GRANATER · 20 SKROT',
@@ -105,7 +108,10 @@ export const NPCS = [
     id: 'liv',
     name: 'Liv – fältvårdare',
     classId: 'faltvardare',
-    ...walkableNear(MAP.spawn.x + 2, MAP.spawn.z + 23),
+    ...walkableNear(
+      HUB.stations.find((n) => n.id === 'liv').x,
+      HUB.stations.find((n) => n.id === 'liv').z,
+    ),
     text: 'Ingen dalmas lämnas bakom. Jag läker alla dina sår för 10 skrot.',
     service: 'treatment',
     label: 'FULL BEHANDLING · 10 SKROT',
@@ -114,7 +120,10 @@ export const NPCS = [
     id: 'einar',
     name: 'Einar – älvspanare',
     classId: 'skogsvandrare',
-    ...walkableNear(MAP.spawn.x - 14, MAP.spawn.z + 20),
+    ...walkableNear(
+      HUB.stations.find((n) => n.id === 'einar').x,
+      HUB.stations.find((n) => n.id === 'einar').z,
+    ),
     text: 'Följ broarna och håll utkik efter röda prickskyttemantlar. Min spaning markerar fientliga patruller på kartan i två minuter.',
     service: 'intel',
     label: 'MARKERA PATRULLER I 120 SEKUNDER',

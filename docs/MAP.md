@@ -1,5 +1,7 @@
 # Avesta-kartan: källor och exakt status
 
+**Aktuell status, 0.8 (2026-10-12):** Google Maps är nu åtkomligt. Ett nytt OSM-utdrag ger 3 384 bearbetade byggnadsfotavtryck, varav 2 630 används i spelet. Åtta nya landmärken och fem positionskorrigeringar finns i `shared/city.json`. De tidigare 180 procedurhusen är ersatta. Fasader och byggnadshöjder är fortfarande tolkade. [Version 0.8](RELEASE-0.8.md) beskriver den aktuella kartan; datumen och siffrorna nedan dokumenterar tidigare importsteg.
+
 Vägsträckningar, registrerade vägbroar, vattenytor och älvlinjer kommer från **OpenStreetMap**, hämtat **2026-10-06** via Overpass API. Spelet innehåller 2 890 vägsegment, 127 älvsegment och tio vattenpolygoner. Exporten och den bearbetade databasen finns i repot; kartan kräver inga externa anrop när man spelar.
 
 Kartans geografiska avstånd är komprimerade **1:4**. Riktningar och relativa lägen för källbelagda punkter behålls i en lokal projektion, och höjder kommer från Copernicus GLO-30 DSM. Vägbredder, vissa vattenbredder, byggnadsstorlekar och 3D-utseenden är spelmässiga approximationer. Detta är inte en lantmäterimätning eller en fullständig digital tvilling av Avesta. Visade vapenavstånd gäller spelenheter.
@@ -55,6 +57,8 @@ Liveimporten behöver `curl`, TLS-verifiering och åtkomst till **overpass-api.d
 ## Licens och tillgänglighet
 
 Kartdatabasen är **© OpenStreetMap contributors**, tillgänglig under **Open Database License (ODbL) 1.0**. Se [OSM:s upphovsrättssida](https://www.openstreetmap.org/copyright) och [licenstexten](https://opendatacommons.org/licenses/odbl/1-0/).
+
+Byggnadsutdraget från 2026-10-12 hämtades med Overpass-frågan `way[building](60.128,16.135,60.170,16.219); out tags center geom;`. `node scripts/build-city.js` reproducerar den bearbetade databasen. Även `city-source.json` och `city-database.json` finns i produktionsbygget och offlinecachen. För Avesta stadsbild används också kommunens [program för Koppardalen](https://avesta.se/bygga-bo-och-miljo/planering-byggande-och-boende/kommunens-planarbete/gallande-oversiktsplaner-och-program/program-for-koppardalen/) och information om [Gamla Byn](https://www.baraiavesta.se/upplev-avesta/gamla-byn/).
 
 Attribuering visas alltid i spelet. Produktionsbygget tillhandahåller `/map-source.json` (källutdrag), `/map-database.json` (bearbetad databas) och `/NOTICE-OSM.txt` (licensmeddelande), även i offlinecachen. Dessa kartdatabaser omfattas av ODbL; projektets egen kod och konst har separat upphovsrätt. Originalkoordinater och ID gör ändringarna spårbara.
 

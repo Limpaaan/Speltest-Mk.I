@@ -1,4 +1,5 @@
 @import url('./ui.css');
+@import url('./clarity.css');
 :root {
   font-family: Inter, Arial, sans-serif;
   color: #eeeadd;
@@ -715,4 +716,30 @@ body.aiming #crosshair {
 .controls {
   gap: 12px;
   flex-wrap: wrap;
+}
+.voice-controls {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin: 0.8rem 0;
+}
+#speech-caption {
+  position: fixed;
+  z-index: 100;
+  bottom: 1.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, 85vw);
+  background: rgba(13, 24, 22, 0.92);
+  color: #f3ebd5;
+  border: 1px solid #8b947c;
+  border-radius: 6px;
+  padding: 0.65rem 1rem;
+  line-height: 1.45;
+  text-align: center;
+  pointer-events: none;
+  font-size: 15px;
+}
+#speech-caption:empty {
+  display: none;
 }

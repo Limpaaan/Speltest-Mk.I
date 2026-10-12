@@ -18,7 +18,7 @@
     <main id="menu">
       <header class="masthead">
         <a class="wordmark" href="/">A<span> / </span>SS</a
-        ><span class="edition">SPELBAR PROTOTYP <b>0.7</b></span
+        ><span class="edition">SPELBAR PROTOTYP <b>0.8</b></span
         ><span class="coordinate">DALARNA, SVERIGE</span
         ><button id="settings-menu" class="small-button">INSTÄLLNINGAR</button>
       </header>
@@ -82,13 +82,18 @@
       </header>
       <aside class="quests">
         <div class="eyebrow">DITT SKIFT</div>
-        <h2>Vi lämnar ingen bro.</h2>
-        <div id="quest-list"></div>
+        <h2>Aktuellt uppdrag</h2>
+        <details class="side-goals">
+          <summary>Sidomål</summary>
+          <div id="quest-list"></div>
+        </details>
         <div class="campaign-hud">
           <strong id="campaign-title"></strong>
           <p id="campaign-progress"></p>
         </div>
+        <button id="journal-button" class="small-button">MÅL & JOURNAL <kbd>J</kbd></button>
         <p id="zone"></p>
+        <p id="guide-hint"></p>
       </aside>
       <div id="notification" role="status"></div>
       <div id="interact"></div>
@@ -106,7 +111,9 @@
           <span><kbd>Q</kbd> <b id="ability-name"></b></span><span id="ability-cooldown"></span>
         </div>
       </div>
+      <div id="hud-wallet" aria-label="Dina resurser"></div>
       <div class="weapon-panel">
+        <div id="weapon-icon"></div>
         <span id="weapon-rarity"></span>
         <h2 id="weapon-name"></h2>
         <span id="grenade-count"></span>
@@ -116,6 +123,7 @@
       <div class="map-panel">
         <canvas id="minimap" width="260" height="260" aria-label="Översiktskarta"></canvas>
         <div>AVESTA / OSM · ~ UNGEFÄRLIG <kbd>M</kbd></div>
+        <div>GULD · mål &nbsp; GRÖN · vänner &nbsp; RÖD · fiender</div>
       </div>
       <div class="controls">
         <span><kbd>WASD</kbd> FÖRFLYTTA</span><span><kbd>MUS</kbd> SIKTA & SKJUT</span
@@ -134,7 +142,10 @@
         </div>
         <button class="close-dialog small-button">STÄNG ×</button>
       </div>
+      <div id="journal-transcript" class="voice-transcript" hidden></div>
       <div id="journal-content"></div>
+      <h3>Skiftgårdens stationer</h3>
+      <div id="journal-directory" class="station-directory"></div>
     </dialog>
     <dialog id="inventory-dialog">
       <div class="dialog-heading">
@@ -144,11 +155,21 @@
         </div>
         <button class="close-dialog small-button">STÄNG ×</button>
       </div>
+      <div id="inventory-wallet"></div>
       <p id="inventory-stats"></p>
       <div class="talents">
         <button id="talent-power" class="secondary">+ Eldkraft</button
         ><button id="talent-vitality" class="secondary">+ Livskraft</button>
       </div>
+      <nav class="dialog-nav" aria-label="Packningens avdelningar">
+        <button data-jump="inventory-items">Vapen</button
+        ><button data-jump="pack-materials">Material</button
+        ><button data-jump="pack-supplies">Förbrukning</button
+        ><button data-jump="pack-parts">Vapendelar</button
+        ><button data-jump="pack-talents">Talanger</button>
+      </nav>
+      <h3>Dina vapen</h3>
+
       <div id="inventory-items"></div>
       <div id="equipment-panel"></div>
       <p class="muted">
@@ -163,22 +184,53 @@
         </div>
         <button class="close-dialog small-button">STÄNG ×</button>
       </div>
-      <p class="muted">
-        ”Vi lämnar ingen bakom oss. Hämta ditt nästa uppdrag eller använd skrotet i verkstaden.”
-      </p>
-      <h3 id="contract-title"></h3>
-      <p id="contract-previous" class="story-recap"></p>
-      <p id="contract-story"></p>
-      <p id="contract-progress"></p>
-      <button id="contract-action" class="primary">TA UPPDRAGET</button>
-      <h3>Verkstad</h3>
-      <p id="workshop-stats"></p>
-      <div id="workshop-recipes" class="workshop-recipes"></div>
-      <button id="upgrade-armor" class="secondary"></button>
-      <h3>Aaltohusets arkiv</h3>
-      <p>Gå in genom den östra entrén, sök arkivskåpet och rädda evakueringsplanen åt Maja.</p>
-      <button id="archive-action" class="secondary">LÄMNA IN EVAKUERINGSPLANEN</button>
-      <div id="camp-market"></div>
+      <nav class="dialog-nav" aria-label="Skiftbodens avdelningar">
+        <button data-jump="camp-quest">Uppdrag</button
+        ><button data-jump="camp-workshop">Verkstad</button
+        ><button data-jump="camp-market">Handel</button
+        ><button data-jump="camp-directory">Hitta en NPC</button>
+      </nav>
+      <div class="camp-grid">
+        <section class="quest-card" id="camp-quest">
+          <div class="eyebrow">KOPPARHJÄRTA · <span id="contract-chapter"></span></div>
+          <h3 id="contract-title"></h3>
+          <p id="contract-previous" class="story-recap"></p>
+          <p id="contract-story"></p>
+          <div id="contract-objective" class="mission-target"></div>
+          <p id="contract-progress"></p>
+          <p id="contract-rewards" class="reward-line"></p>
+          <div class="voice-controls">
+            <button id="quest-listen" class="small-button">LYSSNA PÅ UPPDRAGET</button
+            ><button class="stop-voice small-button">STOPPA RÖST</button>
+          </div>
+          <div id="camp-transcript" class="voice-transcript" hidden></div>
+          <button id="contract-action" class="primary">TA UPPDRAGET</button>
+        </section>
+        <aside class="camp-services">
+          <section class="service-card" id="camp-workshop">
+            <h3>Verkstad</h3>
+            <p id="workshop-stats"></p>
+            <div id="workshop-recipes" class="workshop-recipes"></div>
+            <button id="upgrade-armor" class="secondary"></button>
+          </section>
+          <section class="service-card">
+            <h3>Aaltohusets arkiv</h3>
+            <p>
+              Gå in genom den östra entrén, sök arkivskåpet och rädda evakueringsplanen åt Maja.
+            </p>
+            <button id="archive-action" class="secondary">LÄMNA IN EVAKUERINGSPLANEN</button>
+          </section>
+          <section class="service-card"><div id="camp-market"></div></section>
+        </aside>
+      </div>
+      <section class="service-card" id="camp-directory">
+        <h3>Skiftgården · skyddad samlingsplats</h3>
+        <p>
+          Alla tjänster finns vid egna stationer i den bevakade gården. Välj en station för
+          vägvisning och prata med personen på plats med E.
+        </p>
+        <div id="hub-directory" class="station-directory"></div>
+      </section>
       <p id="camp-message" role="status"></p>
     </dialog>
     <dialog id="pause-dialog">
@@ -270,7 +322,14 @@
       <button class="close-dialog" aria-label="Stäng">×</button>
       <div class="eyebrow">AVESTAS MOTSTÅND</div>
       <h2 id="npc-name"></h2>
+      <div id="npc-services" class="npc-service-card"></div>
       <p id="npc-text"></p>
+      <p id="npc-service-status"></p>
+      <div id="npc-transcript" class="voice-transcript" hidden></div>
+      <div class="voice-controls">
+        <button id="npc-listen" class="small-button">LYSSNA IGEN</button
+        ><button class="stop-voice small-button">STOPPA RÖST</button>
+      </div>
       <button id="npc-service" class="primary"></button>
       <div id="npc-market" hidden></div>
       <div id="artist-panel" hidden></div>
@@ -318,7 +377,39 @@
           ><input id="setting-weaponBob" type="checkbox" /> Vapenrörelse vid förflyttning</label
         >
       </div>
+      <h3>Ljud och röster</h3>
+      <div class="settings-grid">
+        <label
+          >Huvudvolym <output id="masterVolume-value"></output
+          ><input id="setting-masterVolume" type="range" min="0" max="1" step="0.05"
+        /></label>
+        <label
+          >Vapen och effekter <output id="effectsVolume-value"></output
+          ><input id="setting-effectsVolume" type="range" min="0" max="1" step="0.05"
+        /></label>
+        <label
+          >Röstvolym <output id="voiceVolume-value"></output
+          ><input id="setting-voiceVolume" type="range" min="0" max="1" step="0.05"
+        /></label>
+        <label
+          >Omgivningsljud <output id="ambientVolume-value"></output
+          ><input id="setting-ambientVolume" type="range" min="0" max="1" step="0.05"
+        /></label>
+        <label class="check"
+          ><input id="setting-voicesEnabled" type="checkbox" /> NPC-röster och fienderop</label
+        >
+        <label class="check"
+          ><input id="setting-subtitles" type="checkbox" /> Undertexter för dialog och
+          fienderop</label
+        >
+      </div>
       <button id="settings-reset" class="secondary">ÅTERSTÄLL STANDARD</button>
+      <label><input id="setting-gpuPerformance" type="checkbox" /> GPU-prestandaläge</label>
+      <p class="hint">
+        Prioriterar grafikkortet och anpassar upplösningen vid långvarigt låg bildfrekvens. Byte av
+        grafikkort kräver omstart.
+      </p>
+      <button id="settings-gpu-restart" hidden>Starta om med vald GPU-inställning</button>
       <p id="settings-status" role="status">Ändringar sparas automatiskt på den här enheten.</p>
     </dialog>
     <dialog id="death-dialog">
@@ -334,6 +425,7 @@
       rel="noopener noreferrer"
       >© OpenStreetMap contributors · ODbL</a
     >
+    <div id="speech-caption" role="status" aria-live="polite"></div>
     <script type="module" src="/src/main.js"></script>
     <a id="terrain-attribution" href="./terrain-notice.txt" target="_blank" rel="noopener"
       >Copernicus WorldDEM-30 · höjddata och licens</a

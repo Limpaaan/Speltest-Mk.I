@@ -60,8 +60,8 @@ export class DayNight {
     v.s.asphalt.emissive.set('#202d3a');
     v.s.asphalt.emissiveIntensity = d.night * 0.28;
     v.scene.environmentIntensity = 0.06 + d.day * 0.26;
-    v.weaponLight.intensity = 1.2 + d.day * 1.8;
-    v.weaponKeyLight.intensity = 0.65 + d.day * 1.4;
+    v.weaponLight.intensity = 0.8 + d.day * 0.8;
+    v.weaponKeyLight.intensity = 0.9 + d.day * 1.4;
     this.stars.position.copy(c);
     this.stars.material.opacity = d.night * 0.8;
     this.moon.position.set(

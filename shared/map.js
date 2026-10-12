@@ -1,5 +1,7 @@
 import { planSites, inParking } from './sites.js';
 import { createVehicles } from './ambience.js';
+import { hubLayout } from './hub.js';
+import { architectureVolumes } from './architecture.js';
 import { DISTRICT_BUILDINGS, DISTRICTS, DISTRICT_ROADS } from './districts.js';
 import { fitRoads, roadIndex, roadLift } from './roads.js';
 import {
@@ -13,17 +15,19 @@ import {
 import { createScenery } from './scenery.js';
 import { terrainHeight } from './terrain.js';
 import geography from './geography.json' with { type: 'json' };
+import { cityPlaces, streetWidths, city } from './city-layout.js';
+import { buildingContains, buildingLocal, buildingBounds, spatialIndex } from './buildings.js';
 const aalto = geography.places.find((p) => p.id === 'aalto'),
   skogsbo = geography.places.find((p) => p.id === 'skogsbo');
 export const MAP = {
-  version: 4,
+  version: 5,
   extent: 570,
   spawn: { x: aalto.x + aalto.w / 2 + 10, z: aalto.z + 10 },
   notice:
-    'OSM-karta • Copernicus-höjder • omgivande bebyggelse och arkitektur tolkade • ~ = ungefärlig plats',
-  places: [...geography.places, ...DISTRICT_BUILDINGS],
+    'OSM-gator & byggnadsfotavtryck • utjämnade Copernicus-höjder • fasader tolkade • ~ = ungefärlig plats',
+  places: cityPlaces([...geography.places, ...DISTRICT_BUILDINGS]),
   districts: DISTRICTS,
-  roads: [...geography.roads, ...DISTRICT_ROADS],
+  roads: streetWidths([...geography.roads, ...DISTRICT_ROADS], city.roadClasses),
   rivers: geography.rivers,
   waters: geography.waters,
   bridges: geography.roads.filter((r) => r.bridge),
@@ -93,22 +97,7 @@ export function canStand(x, z) {
     Math.abs(z) > MAP.extent
   )
     return false;
-  if (
-    [
-      ...MAP.places.filter((p) => p.id !== 'aalto'),
-      ...AALTO_WALLS,
-      ...AALTO_FURNITURE,
-      ...MAP.buildings,
-      ...MAP.cover,
-    ].some(
-      (p) =>
-        p.w > 0 &&
-        p.d > 0 &&
-        Math.abs(x - p.x) < p.w / 2 + 0.35 &&
-        Math.abs(z - p.z) < p.d / 2 + 0.35,
-    )
-  )
-    return false;
+  if (solidIndex.point(x, z).some((p) => buildingContains(p, x, z, 0.35))) return false;
   if (obstaclesNear(x, z).some((p) => Math.hypot(x - p.x, z - p.z) < p.radius + 0.35)) return false;
   return !waterAt(x, z) || onBridge(x, z);
 }
@@ -124,7 +113,7 @@ export function walkableNear(x, z) {
   return { ...MAP.spawn };
 }
 export function inSanctuary(p) {
-  return Math.hypot(p.x - MAP.spawn.x, p.z - MAP.spawn.z) < 18;
+  return HUB.inSafeArea(p.x, p.z) || Math.hypot(p.x - MAP.spawn.x, p.z - MAP.spawn.z) < 18;
 }
 export function inArena(p) {
   return Math.hypot(p.x - MAP.arena.x, p.z - MAP.arena.z) < MAP.arena.radius;
@@ -166,26 +155,29 @@ export function rayBoxDistance(origin, direction, min, max, range = Infinity) {
 export function raycastWorld(origin, direction, range) {
   let distance = range,
     hit = null;
-  for (const p of [
-    ...MAP.places.filter((p) => p.id !== 'aalto'),
-    ...AALTO_WALLS,
-    ...AALTO_FURNITURE,
-    ...AALTO_UPPER,
-    ...MAP.buildings,
-    ...MAP.cover,
-  ]) {
+  const endX = origin.x + direction.x * range,
+    endZ = origin.z + direction.z * range;
+  for (const p of shotIndex.box(
+    Math.min(origin.x, endX),
+    Math.min(origin.z, endZ),
+    Math.max(origin.x, endX),
+    Math.max(origin.z, endZ),
+  )) {
     if (!p.w || !p.d) continue;
+    const q = buildingLocal(p, origin.x, origin.z),
+      c = Math.cos(p.yaw || 0),
+      s = Math.sin(p.yaw || 0);
     const t = rayBoxDistance(
-      origin,
-      direction,
-      { x: p.x - p.w / 2, y: p.base ?? groundHeight(p.x, p.z) - 3, z: p.z - p.d / 2 },
+      { ...origin, x: q.x, z: q.z },
+      { ...direction, x: c * direction.x - s * direction.z, z: s * direction.x + c * direction.z },
+      { x: -p.w / 2, y: p.base ?? groundHeight(p.x, p.z) - 3, z: -p.d / 2 },
       {
-        x: p.x + p.w / 2,
+        x: p.w / 2,
         y:
           (p.base ?? groundHeight(p.x, p.z)) +
           p.h +
-          (['cottage', 'school', 'warehouse'].includes(p.type) ? 2.2 : 0),
-        z: p.z + p.d / 2,
+          (p.roofRise ?? (['cottage', 'school', 'warehouse'].includes(p.type) ? 2.2 : 0)),
+        z: p.d / 2,
       },
       distance,
     );
@@ -250,7 +242,48 @@ MAP.entrances = sites.entrances;
 MAP.roads.push(...sites.access);
 Object.assign(MAP, createScenery(MAP, waterAt, segmentDistance, terrainHeight));
 const nearbyRoads = roadIndex(MAP.roads);
+export const roadsNear = roadIndex(MAP.roads, 10);
 MAP.cover.push(...createVehicles(MAP, waterAt, segmentDistance));
+export const HUB = hubLayout(MAP.spawn);
+for (const [i, dx, dz] of [
+  [0, 43, -9],
+  [1, 43, 34],
+  [2, -3, 34],
+  [3, 12, 34],
+]) {
+  const p = {
+    id: `hub-barricade-${i}`,
+    type: 'barricade',
+    hub: true,
+    x: MAP.spawn.x + dx,
+    z: MAP.spawn.z + dz,
+    w: 3.2,
+    d: 0.7,
+    h: 1.05,
+  };
+  if (
+    !waterAt(p.x, p.z) &&
+    !MAP.roads.some((r) => segmentDistance(p.x, p.z, ...r.points) < (r.width || 5.6) / 2 + 2)
+  )
+    MAP.cover.push(p);
+}
+const architectureDetails = MAP.places.flatMap((p) =>
+  architectureVolumes(p).map((v) => ({ ...v, base: groundHeight(p.x, p.z) + v.baseOffset })),
+);
+const solids = [
+  ...MAP.places.filter((p) => p.id !== 'aalto' && p.w && p.d),
+  ...AALTO_WALLS,
+  ...AALTO_FURNITURE,
+  ...MAP.buildings,
+  ...MAP.cover,
+  ...architectureDetails.filter((p) => !p.overhead),
+];
+const solidIndex = spatialIndex(solids, (p) => buildingBounds(p, 0.35));
+const shotIndex = spatialIndex([
+  ...solids,
+  ...AALTO_UPPER,
+  ...architectureDetails.filter((p) => p.overhead),
+]);
 const obstacleCells = new Map();
 for (const obstacle of [...MAP.trees, ...MAP.rocks]) {
   const key = `${Math.floor(obstacle.x / 10)},${Math.floor(obstacle.z / 10)}`;
@@ -267,7 +300,14 @@ function obstaclesNear(x, z) {
   return found;
 }
 export function travelFactor(x, z, dx, dz) {
-  const road = MAP.roads.some((r) => segmentDistance(x, z, ...r.points) < 3.5);
-  const slope = Math.abs(groundHeight(x + dx, z + dz) - groundHeight(x, z));
-  return (road ? 1 : 0.78) * Math.max(0.4, 1 - slope * 0.65);
+  const road = roadsNear(x, z).some(
+    (r) => segmentDistance(x, z, ...r.points) < (r.width || 5.6) / 2 + 0.4,
+  );
+  const length = Math.hypot(dx, dz);
+  if (!length) return road ? 1 : 0.92;
+  const nx = dx / length,
+    nz = dz / length;
+  const grade =
+    Math.abs(groundHeight(x + nx * 2, z + nz * 2) - groundHeight(x - nx * 2, z - nz * 2)) / 4;
+  return (road ? 1 : 0.92) * Math.max(0.72, 1 - grade * 0.25);
 }

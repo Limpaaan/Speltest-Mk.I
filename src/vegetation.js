@@ -1,6 +1,7 @@
+import { roadWidth } from '../shared/roads.js';
 import { inParking } from '../shared/sites.js';
 import * as THREE from 'three';
-import { MAP, groundHeight, canStand, waterAt, segmentDistance } from '../shared/map.js';
+import { MAP, groundHeight, canStand, waterAt, segmentDistance, roadsNear } from '../shared/map.js';
 import { foliageMaterial } from './atmosphere.js';
 import { spruceMaterial } from './surfaces.js';
 export function buildVegetation(v) {
@@ -82,14 +83,14 @@ export function buildVegetation(v) {
       x = t.x + Math.sin(i * 12.9) * 3,
       z = t.z + Math.cos(i * 7.7) * 3;
     if (
-      i % 2 ||
+      i % 3 ||
       !canStand(x, z) ||
       inParking(MAP.parking, x, z, 1) ||
       waterAt(x, z) ||
-      MAP.roads.some((r) => segmentDistance(x, z, ...r.points) < 4.5)
+      roadsNear(x, z).some((r) => segmentDistance(x, z, ...r.points) < roadWidth(r) / 2 + 2)
     )
       continue;
-    bushes.push({ x, z, h: 0.6 + (i % 7) * 0.13 });
+    bushes.push({ x, z, h: 0.45 + (i % 7) * 0.07 });
   }
   const bush = new THREE.InstancedMesh(
     new THREE.PlaneGeometry(1, 1),

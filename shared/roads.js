@@ -1,6 +1,12 @@
+import { buildingLocal, buildingWorld } from './buildings.js';
 export const roadWidth = (r) => (r.bridge ? 10 : r.width || (r.name ? 5.6 : 3.1));
 // Slab clipping of the centreline against a rectangle enlarged by the road shoulder.
 export function crossing(a, b, p, margin = 0) {
+  if (p.yaw) {
+    const u = buildingLocal(p, ...a),
+      v = buildingLocal(p, ...b);
+    return crossing([u.x, u.z], [v.x, v.z], { x: 0, z: 0, w: p.w, d: p.d }, margin);
+  }
   let lo = 0,
     hi = 1;
   for (const [axis, c, size] of [
@@ -54,7 +60,10 @@ export function fitRoads(roads, buildings) {
           [-1, 1],
           [1, 1],
           [1, -1],
-        ].map(([x, z]) => [p.x + x * (p.w / 2 + m + 0.02), p.z + z * (p.d / 2 + m + 0.02)]),
+        ].map(([x, z]) => {
+          const q = buildingWorld(p, x * (p.w / 2 + m + 0.02), z * (p.d / 2 + m + 0.02));
+          return [q.x, q.z];
+        }),
       ];
       const costs = [0, ...Array(5).fill(Infinity)],
         prev = [],
@@ -99,11 +108,11 @@ export function fitRoads(roads, buildings) {
     return pieces;
   });
 }
-export function roadIndex(roads) {
+export function roadIndex(roads, padding = 1) {
   const cells = new Map();
   for (const r of roads) {
     const [a, b] = r.points,
-      pad = roadWidth(r) / 2 + 1;
+      pad = roadWidth(r) / 2 + padding;
     for (
       let x = Math.floor((Math.min(a[0], b[0]) - pad) / 20);
       x <= Math.floor((Math.max(a[0], b[0]) + pad) / 20);

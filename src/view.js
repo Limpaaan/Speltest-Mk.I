@@ -1,4 +1,9 @@
+import { RenderBudget } from './render-budget.js';
 import { buildVegetation } from './vegetation.js';
+import { buildHub } from './hub.js';
+import { referenceLandmark } from './reference-landmarks.js';
+import { buildCity, cityLandmark } from './city.js';
+import { CameraTrack } from './camera-track.js';
 import { DayNight } from './daylight.js';
 import { buildVehicles } from './vehicles.js';
 import { roadWidth } from '../shared/roads.js';
@@ -16,16 +21,19 @@ import { WEAPONS } from '../shared/weapons.js';
 import { terrain, terrainHeight } from '../shared/terrain.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { MAP, waterAt, segmentDistance, eyeHeight, groundHeight } from '../shared/map.js';
+import { MAP, HUB, waterAt, segmentDistance, eyeHeight, groundHeight } from '../shared/map.js';
 import { CLASSES, RARITY_COLORS, weaponStats } from '../shared/game.js';
 import { surfaces, spruceMaterial } from './surfaces.js';
 import { CAMP, NPCS } from '../shared/progression.js';
 export class WorldView {
-  constructor(canvas) {
+  constructor(canvas, settings = {}) {
+    this.initialGpuPreference = Boolean(settings.gpuPerformance);
+    this.renderBudget = new RenderBudget();
+    this.resolutionScale = 1;
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
-      powerPreference: 'high-performance',
+      powerPreference: settings.gpuPerformance ? 'high-performance' : 'default',
     });
     const gl = this.renderer.getContext(),
       debug = gl.getExtension('WEBGL_debug_renderer_info');
@@ -66,6 +74,7 @@ export class WorldView {
     this.boxGeo = new THREE.BoxGeometry(1, 1, 1);
     this.batches = new Map();
     this.entities = new Map();
+    this.cameraTrack = new CameraTrack();
     this.civilians = [];
     this.shots = new THREE.Group();
     this.scene.add(this.shots);
@@ -131,6 +140,7 @@ export class WorldView {
       clone.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     }
     clone.applyMatrix4(matrix);
+    if (this.siteRotation) clone.applyMatrix4(this.siteRotation);
     if (!this.batches.has(mat)) this.batches.set(mat, []);
     this.batches.get(mat).push(clone);
   }
@@ -171,6 +181,10 @@ export class WorldView {
     );
     mesh.position.set(x, y + (this.baseY || 0), z);
     mesh.rotation.y = yaw;
+    if (this.siteRotation) {
+      mesh.position.applyMatrix4(this.siteRotation);
+      mesh.rotation.y += this.siteYaw;
+    }
     this.scene.add(mesh);
   }
   buildSky() {
@@ -272,7 +286,7 @@ export class WorldView {
     };
     strip(
       MAP.roads.filter((r) => !r.bridge).map((r) => ({ ...r, width: roadWidth(r) + 1.6 })),
-      s.soil,
+      s.gravel,
       0.012,
     );
     strip(
@@ -282,7 +296,7 @@ export class WorldView {
     );
     strip(
       MAP.roads.filter((r) => r.surface === 'gravel'),
-      s.soil,
+      s.gravel,
       0.02,
     );
     strip(MAP.rivers, s.water, 0.065);
@@ -343,13 +357,23 @@ export class WorldView {
           );
         }
     }
-    for (const p of [...MAP.places, ...(MAP.buildings || [])]) {
+    for (const p of MAP.places) {
       this.baseY = groundHeight(p.x, p.z);
+      this.siteYaw = p.yaw || 0;
+      this.siteRotation = p.yaw
+        ? new THREE.Matrix4()
+            .makeTranslation(p.x, 0, p.z)
+            .multiply(new THREE.Matrix4().makeRotationY(p.yaw))
+            .multiply(new THREE.Matrix4().makeTranslation(-p.x, 0, -p.z))
+        : null;
       if (p.type === 'horse') this.horse(p);
       else if (p.w && p.d) this.building(p);
     }
+    this.siteRotation = null;
+    this.city = buildCity(this);
     this.baseY = 0;
     for (const p of MAP.cover.filter((p) => p.type !== 'police')) {
+      if (p.hub) continue;
       this.baseY = groundHeight(p.x, p.z);
       if (p.type === 'wreck') {
         const body = new THREE.BoxGeometry(p.w - 0.12, 0.55, p.d);
@@ -392,6 +416,7 @@ export class WorldView {
     districtDetails(this);
     this.vegetation();
     this.buildCamp();
+    buildHub(this);
     for (const npc of NPCS) {
       if (npc.id === 'anders') {
         this.artist = buildArtist(this);
@@ -403,7 +428,6 @@ export class WorldView {
       actor.position.set(npc.x, groundHeight(npc.x, npc.z), npc.z);
       this.scene.add(actor);
       this.sign(npc.name, npc.x, groundHeight(npc.x, npc.z) + 2.6, npc.z, 4);
-      this.box(npc.x + 1.5, groundHeight(npc.x + 1.5, npc.z) + 0.6, npc.z, 1, 1.2, 1, this.s.wood);
     }
     for (const p of MAP.places.filter((p) => p.type === 'viewpoint'))
       this.sign(p.name, p.x, groundHeight(p.x, p.z) + 2, p.z, 6);
@@ -419,6 +443,9 @@ export class WorldView {
     );
   }
   building(p) {
+    if (referenceLandmark(this, p)) return;
+    if (['townhall', 'museum', 'watertower', 'hospital', 'sports', 'station'].includes(p.type))
+      return cityLandmark(this, p);
     if (p.district) return districtBuilding(this, p);
     if (p.id === 'verket') return buildVerket(this, p);
     if (p.id === 'aalto') return buildAalto(this, p);
@@ -540,13 +567,13 @@ export class WorldView {
     parent.add(mesh);
     return mesh;
   }
-  rifle(kind = 'rifle', mods = {}) {
-    return weaponModel(kind, this.s, this.boxGeo, mods);
+  rifle(kind = 'rifle', mods = {}, detail = 'hero') {
+    return weaponModel(kind, this.s, this.boxGeo, mods, detail);
   }
   soldier(entity) {
     const group = createHuman(
       { ...entity, weapon: entity.weapon || { kind: ENEMY_TYPES[entity.type]?.weapon || 'rifle' } },
-      (kind, mods) => this.rifle(kind, mods),
+      (kind, mods) => this.rifle(kind, mods, 'world'),
     );
     if (entity.type === 'boss') {
       const scale = 3.1 / 1.85;
@@ -575,9 +602,27 @@ export class WorldView {
   }
   buildWeapon() {
     this.weaponScene = new THREE.Scene();
-    this.weaponLight = new THREE.HemisphereLight('#e4e9d9', '#454e35', 3);
+    if (!this.environmentMap) {
+      const faces = Array.from({ length: 6 }, (_, i) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 64;
+        const ctx = canvas.getContext('2d'),
+          gradient = ctx.createLinearGradient(0, 0, 0, 64);
+        gradient.addColorStop(0, i === 2 ? '#e1e5e0' : '#a8b9c2');
+        gradient.addColorStop(1, i === 3 ? '#344238' : '#59685d');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 64, 64);
+        return canvas;
+      });
+      this.weaponEnvironment = new THREE.CubeTexture(faces);
+      this.weaponEnvironment.colorSpace = THREE.SRGBColorSpace;
+      this.weaponEnvironment.needsUpdate = true;
+    }
+    this.weaponScene.environment = this.environmentMap?.texture || this.weaponEnvironment;
+    this.weaponScene.environmentIntensity = 0.65;
+    this.weaponLight = new THREE.HemisphereLight('#e4e9d9', '#454e35', 1.6);
     this.weaponScene.add(this.weaponLight);
-    this.weaponKeyLight = new THREE.DirectionalLight('#e7e2d5', 2);
+    this.weaponKeyLight = new THREE.DirectionalLight('#e7e2d5', 2.3);
     this.weaponKeyLight.position.set(-2, 3, 2);
     this.weaponScene.add(this.weaponKeyLight);
     this.weaponCamera = new THREE.PerspectiveCamera(65, 1, 0.025, 8);
@@ -631,7 +676,7 @@ export class WorldView {
         if (rig.weaponKey !== key) {
           rig.torso.remove(rig.weapon);
           rig.weapon.userData.geometries.forEach((g) => g.dispose());
-          rig.weapon = this.rifle(e.weapon.kind, e.weapon.mods);
+          rig.weapon = this.rifle(e.weapon.kind, e.weapon.mods, 'world');
           rig.weapon.position.set(0.08, 0.3, 0.16);
           rig.weapon.rotation.y = Math.PI;
           rig.torso.add(rig.weapon);
@@ -728,6 +773,8 @@ export class WorldView {
     for (const { c, mesh } of this.cacheMeshes) mesh.visible = !player?.searched.includes(c.id);
     this.lamp.visible = Boolean(active && player?.hp > 0 && player?.flashlight);
     if (this.artist) animateHuman(this.artist.actor, state.time, { drawing: state.time % 32 < 22 });
+    for (const guard of this.hubGuards || [])
+      animateHuman(guard, state.time, { aim: guard.rotation.y });
     for (const actor of this.civilians) {
       const near =
         player &&
@@ -754,11 +801,16 @@ export class WorldView {
     this.recoil *= Math.exp(-dt * 12);
     this.ads = THREE.MathUtils.lerp(this.ads, controls.ads ? 1 : 0, Math.min(1, dt * 12));
     if (active && player) {
-      this.camera.position.set(
-        player.x,
-        groundHeight(player.x, player.z) + eyeHeight({ ...player, crouch: controls.crouch }),
-        player.z,
+      const cameraPosition = this.cameraTrack.follow(
+        myId,
+        {
+          x: player.x,
+          y: groundHeight(player.x, player.z) + eyeHeight({ ...player, crouch: controls.crouch }),
+          z: player.z,
+        },
+        dt,
       );
+      this.camera.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
       this.camera.rotation.set(controls.pitch ?? 0, (controls.yaw ?? Math.PI) + Math.PI, 0, 'YXZ');
       const stats = weaponStats(player);
       const playerSkin = this.entities.get(myId)?.userData.human?.skin;
@@ -849,6 +901,11 @@ export class WorldView {
       this.sun.target.position.set(0, 0, 95);
     }
     this.atmosphere.update(time, player);
+    this.city.update(
+      this.camera.position,
+      this.settings?.graphics || 'medium',
+      this.softwareRenderer,
+    );
     this.dayNight.update(state.dayTime ?? state.time ?? 0);
     this.vehicles.update(
       time,
@@ -890,11 +947,25 @@ export class WorldView {
       this.sun.shadow.map = null;
     }
     const quality = { low: 0.65, medium: 1, high: 1.5 }[settings.graphics];
-    this.renderer.setPixelRatio(
-      this.softwareRenderer ? Math.min(0.55, quality) : Math.min(devicePixelRatio, quality),
-    );
+    this.basePixelRatio = this.softwareRenderer
+      ? Math.min(0.55, quality)
+      : Math.min(devicePixelRatio, quality);
+    this.renderBudget.reset();
+    this.resolutionScale = 1;
+    this.renderer.setPixelRatio(this.basePixelRatio);
     this.renderer.shadowMap.enabled = settings.graphics !== 'low' && !this.softwareRenderer;
     this.resize();
+  }
+  adaptResolution(dt, active) {
+    const scale = this.renderBudget.update(
+      dt,
+      active && this.settings?.gpuPerformance && !this.softwareRenderer,
+    );
+    if (Math.abs(scale - this.resolutionScale) > 0.015) {
+      this.resolutionScale = scale;
+      this.renderer.setPixelRatio(this.basePixelRatio * scale);
+      this.resize();
+    }
   }
   resize() {
     const width = innerWidth,
@@ -972,19 +1043,19 @@ function mapBackground(size, expanded) {
   ctx.textAlign = 'center';
   if (expanded) {
     const artist = NPCS.find((n) => n.id === 'anders');
-    ctx.fillText('Anders · tillfällig ateljé', pos(artist.x), pos(artist.z) - 7);
+    ctx.fillText('SKIFTGÅRDEN · NPC & TJÄNSTER', pos(HUB.center.x), pos(HUB.center.z) - 12);
   }
   for (const p of MAP.places) {
     ctx.fillStyle = '#c5b887';
     ctx.fillRect(pos(p.x) - 3, pos(p.z) - 3, 6, 6);
     ctx.fillStyle = '#d8d9bd';
-    if (expanded || !['skogsbo-gym', 'skogsbo-dining'].includes(p.id))
+    if (expanded || ['verket', 'aalto', 'horse', 'skogsbo'].includes(p.id))
       ctx.fillText(`${p.verified ? '' : '~'}${p.name}`, pos(p.x), pos(p.z) - 7);
   }
   mapBackgrounds.set(size, canvas);
   return canvas;
 }
-export function drawMap(canvas, state, myId, expanded = false) {
+export function drawMap(canvas, state, myId, expanded = false, guide = null) {
   const ctx = canvas.getContext('2d'),
     size = canvas.width,
     scale = size / (MAP.extent * 2 + 40),
@@ -997,6 +1068,15 @@ export function drawMap(canvas, state, myId, expanded = false) {
     ctx.beginPath();
     ctx.arc(pos(e.x), pos(e.z), e.type === 'boss' ? 3.5 : 1.5, 0, Math.PI * 2);
     ctx.fill();
+  }
+  if (guide) {
+    ctx.strokeStyle = '#8dd8c6';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pos(guide.x), pos(guide.z), 10, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#8dd8c6';
+    ctx.fillText(guide.name + ' · station', pos(guide.x), pos(guide.z) + 25);
   }
   const target = state.players[myId] && campaignTarget(state.players[myId]);
   if (target) {

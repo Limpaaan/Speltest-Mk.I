@@ -5,6 +5,8 @@ https://www.openstreetmap.org/copyright
 
 Download the source extract: ./map-source.json
 Download the complete adapted map database used by this build: ./map-database.json
+Download the additional building source extract (2026-10-12): ./city-source.json
+Download the derived building database: ./city-database.json
 
 Retrieved 2026-10-06 via Overpass API. Adaptations: selected features,
 local coordinate projection, distance compression to 1:4, simplified river
@@ -13,3 +15,8 @@ approximate gameplay positions; the other six landmark positions carry
 OpenStreetMap source IDs. This is not a surveyed map of Avesta.
 
 Database rights are separate from rights in the game's code and artwork.
+
+Version 0.8 adds oriented building rectangles derived from OSM footprints,
+eight sourced landmark positions and five corrected district positions.
+Facades, heights and the resistance courtyard are artistic/gameplay interpretations.
+Road routing and safe access paths are adapted at runtime in shared/map.js.

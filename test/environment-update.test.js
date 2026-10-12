@@ -123,8 +123,13 @@ test('four priority districts retain their provenance and distinctive architectu
   const p = MAP.places.filter((p) => p.district);
   assert.ok(p.length >= 20);
   for (const item of p) {
-    assert.equal(item.verified, false);
-    assert.equal(item.architecture, 'user-map-approximation');
+    if (item.sourceId) {
+      assert.equal(item.verified, true);
+      assert.equal(item.architecture, 'OSM-position-interpreted-elevation');
+    } else {
+      assert.equal(item.verified, false);
+      assert.equal(item.architecture, 'user-map-approximation');
+    }
   }
   assert.ok(p.some((p) => p.type === 'church'));
   assert.equal(p.filter((p) => p.type === 'powerstation').length, 2);

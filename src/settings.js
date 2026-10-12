@@ -8,6 +8,13 @@ export const DEFAULT_SETTINGS = {
   crosshairSize: 22,
   graphics: 'medium',
   weaponBob: true,
+  gpuPerformance: false,
+  masterVolume: 0.7,
+  effectsVolume: 0.8,
+  voiceVolume: 0.95,
+  ambientVolume: 0.3,
+  voicesEnabled: true,
+  subtitles: true,
 };
 export function normalizeSettings(value) {
   const raw = value && typeof value === 'object' ? value : {};
@@ -31,6 +38,13 @@ export function normalizeSettings(value) {
       ? raw.graphics
       : DEFAULT_SETTINGS.graphics,
     weaponBob: typeof raw.weaponBob === 'boolean' ? raw.weaponBob : DEFAULT_SETTINGS.weaponBob,
+    gpuPerformance: typeof raw.gpuPerformance === 'boolean' ? raw.gpuPerformance : false,
+    masterVolume: number('masterVolume', 0, 1),
+    effectsVolume: number('effectsVolume', 0, 1),
+    voiceVolume: number('voiceVolume', 0, 1),
+    ambientVolume: number('ambientVolume', 0, 1),
+    voicesEnabled: typeof raw.voicesEnabled === 'boolean' ? raw.voicesEnabled : true,
+    subtitles: typeof raw.subtitles === 'boolean' ? raw.subtitles : true,
   };
 }
 export function readSettings(storage) {

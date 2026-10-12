@@ -8,32 +8,61 @@ import { WEAPONS } from '../shared/weapons.js';
 let palette;
 function materials() {
   if (palette) return palette;
-  const data = new Uint8Array(64 * 64 * 4);
-  let seed = 431;
-  for (let i = 0; i < data.length; i += 4) {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    const v = 225 + (seed % 30);
-    data.set([v, v, v, 255], i);
-  }
-  const grain = new THREE.DataTexture(data, 64, 64);
-  grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
-  grain.magFilter = THREE.LinearFilter;
-  grain.minFilter = THREE.LinearMipmapLinearFilter;
-  grain.generateMipmaps = true;
-  grain.repeat.set(3, 3);
-  grain.needsUpdate = true;
-  const mat = (color, metalness, roughness) =>
-    new THREE.MeshStandardMaterial({ color, metalness, roughness, map: grain });
+  const texture = (kind, size = 1024) => {
+    const data = new Uint8Array(size * size * 4);
+    let seed = 431;
+    for (let y = 0; y < size; y++)
+      for (let x = 0; x < size; x++) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        const noise = (seed >>> 24) / 255;
+        const grain = Math.sin(x * 0.065 + Math.sin(y * 0.012) * 4 + Math.sin(y * 0.027) * 1.2);
+        const weave = x % 8 < 4 !== y % 8 < 4 ? 9 : -9;
+        const value =
+          kind === 'wood'
+            ? 207 + grain * 22 + noise * 9
+            : kind === 'cloth'
+              ? 219 + weave + noise * 10
+              : kind === 'roughness'
+                ? 167 + noise * 18 + Math.sin(y * 0.5) * 7
+                : 241 + noise * 10 + Math.sin(y * 0.8) * 3;
+        const i = (y * size + x) * 4;
+        data.set([value, value, value, 255], i);
+      }
+    const map = new THREE.DataTexture(data, size, size);
+    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+    map.magFilter = THREE.LinearFilter;
+    map.minFilter = THREE.LinearMipmapLinearFilter;
+    map.generateMipmaps = true;
+    map.anisotropy = 8;
+    map.needsUpdate = true;
+    return map;
+  };
+  const metal = texture('metal'),
+    wood = texture('wood'),
+    cloth = texture('cloth'),
+    rough = texture('roughness', 512);
+  const mat = (color, metalness, roughness, map = metal) =>
+    new THREE.MeshPhysicalMaterial({
+      color,
+      metalness,
+      roughness,
+      map,
+      roughnessMap: rough,
+      bumpMap: map,
+      bumpScale: map === wood ? 0.0012 : 0.00025,
+      clearcoat: map === wood ? 0.18 : 0.08,
+      clearcoatRoughness: 0.55,
+    });
   palette = {
-    steel: mat('#56605e', 0.78, 0.42),
-    dark: mat('#202a2b', 0.55, 0.57),
-    edge: mat('#8c9792', 0.82, 0.32),
-    wood: mat('#875334', 0.02, 0.72),
-    walnut: mat('#5a3825', 0.02, 0.8),
-    olive: mat('#596047', 0.05, 0.79),
+    steel: mat('#353d40', 0.85, 0.5),
+    dark: mat('#171e21', 0.7, 0.65),
+    edge: mat('#717c7e', 0.9, 0.48),
+    wood: mat('#73502e', 0, 0.85, wood),
+    walnut: mat('#513621', 0, 0.86, wood),
+    olive: mat('#414737', 0.12, 0.85),
     rubber: mat('#202523', 0, 0.93),
     brass: mat('#aa8a45', 0.67, 0.43),
-    canvas: mat('#69705b', 0, 0.95),
+    canvas: mat('#535b46', 0, 0.98, cloth),
     lamp: new THREE.MeshStandardMaterial({
       color: '#f5e5bb',
       emissive: '#eacb7c',
@@ -42,7 +71,8 @@ function materials() {
   };
   return palette;
 }
-export function weaponModel(kind, surfaces, boxGeo, rawMods = {}) {
+export function weaponModel(kind, surfaces, boxGeo, rawMods = {}, detail = 'hero') {
+  const hero = detail === 'hero';
   const mods = validMods(kind, rawMods),
     optic = ATTACHMENTS[mods.optic],
     sight = optic?.sight || WEAPONS[kind].sight,
@@ -70,7 +100,7 @@ export function weaponModel(kind, surfaces, boxGeo, rawMods = {}) {
       bevelEnabled: bevel > 0,
       bevelSize: bevel,
       bevelThickness: bevel,
-      bevelSegments: 2,
+      bevelSegments: hero ? 4 : 1,
       steps: 1,
     });
     geo.translate(0, 0, -width / 2);
@@ -78,18 +108,25 @@ export function weaponModel(kind, surfaces, boxGeo, rawMods = {}) {
     return mesh(geo, mat, 0, 0, 0, parent);
   };
   const tube = (mat, r, length, x, y, z, parent = root, open = false) => {
-    const obj = mesh(new THREE.CylinderGeometry(r, r, length, 16, 1, open), mat, x, y, z, parent);
+    const obj = mesh(
+      new THREE.CylinderGeometry(r, r, length, hero ? 40 : 12, 1, open),
+      mat,
+      x,
+      y,
+      z,
+      parent,
+    );
     obj.rotation.x = Math.PI / 2;
     return obj;
   };
   const ring = (mat, r, w, x, y, z, parent = root) =>
-    mesh(new THREE.TorusGeometry(r, w, 6, 24), mat, x, y, z, parent);
+    mesh(new THREE.TorusGeometry(r, w, hero ? 10 : 4, hero ? 40 : 16), mat, x, y, z, parent);
   const rod = (mat, a, b, r = 0.009, parent = root) => {
     const start = new THREE.Vector3(...a),
       end = new THREE.Vector3(...b),
       delta = end.clone().sub(start);
     const obj = mesh(
-      new THREE.CylinderGeometry(r, r, delta.length(), 10),
+      new THREE.CylinderGeometry(r, r, delta.length(), hero ? 16 : 8),
       mat,
       ...start.add(end).multiplyScalar(0.5).toArray(),
       parent,
@@ -98,7 +135,53 @@ export function weaponModel(kind, surfaces, boxGeo, rawMods = {}) {
     return obj;
   };
   const ball = (mat, r, x, y, z, parent = root) =>
-    mesh(new THREE.SphereGeometry(r, 12, 8), mat, x, y, z, parent);
+    mesh(new THREE.SphereGeometry(r, hero ? 24 : 10, hero ? 16 : 6), mat, x, y, z, parent);
+  const perforatedShroud = () => {
+    const radial = hero ? 96 : 48,
+      axial = hero ? 70 : 35,
+      vertices = [],
+      uv = [];
+    const point = (a, t) => [Math.cos(a) * 0.05, Math.sin(a) * 0.05, -0.2 - t * 0.24];
+    for (let row = 0; row < axial; row++)
+      for (let col = 0; col < radial; col++) {
+        const t = (row + 0.5) / axial,
+          a = ((col + 0.5) / radial) * Math.PI * 2;
+        const holeAngle = ((a + Math.PI / 6) % (Math.PI / 3)) - Math.PI / 6;
+        let hole = false;
+        for (let i = 0; i < 5; i++)
+          if ((holeAngle / 0.155) ** 2 + ((t - (0.13 + i * 0.185)) / 0.047) ** 2 < 1) hole = true;
+        if (hole) continue;
+        for (const [c, r] of [
+          [col, row],
+          [col, row + 1],
+          [col + 1, row],
+          [col, row + 1],
+          [col + 1, row + 1],
+          [col + 1, row],
+        ]) {
+          vertices.push(...point((c / radial) * Math.PI * 2, r / axial));
+          uv.push(c / radial, r / axial);
+        }
+      }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.computeVertexNormals();
+    mesh(geo, m.olive);
+    for (const z of [-0.2, -0.44]) ring(m.olive, 0.05, 0.0025, 0, 0, z);
+  };
+  const screw = (x, y, z, parent = root) => {
+    const obj = mesh(
+      new THREE.CylinderGeometry(0.006, 0.006, 0.003, hero ? 20 : 8),
+      m.edge,
+      x,
+      y,
+      z,
+      parent,
+    );
+    obj.rotation.z = Math.PI / 2;
+    block(m.dark, x + (x > 0 ? 0.002 : -0.002), y, z, 0.001, 0.002, 0.008, parent);
+  };
   const trigger = (z = 0.055) => {
     const hoop = ring(m.steel, 0.04, 0.006, 0, -0.087, z);
     hoop.rotation.y = Math.PI / 2;
@@ -217,21 +300,9 @@ export function weaponModel(kind, surfaces, boxGeo, rawMods = {}) {
     supportGrip = [0, -0.14, 0.07];
   } else if (smg) {
     // Kpist m/45: tubular receiver, perforated shroud, straight magazine and wire stock.
-    tube(m.olive, 0.046, 0.44, 0, 0, -0.075);
-    tube(m.dark, 0.025, 0.23, 0, 0, -0.433);
-    tube(m.olive, 0.05, 0.24, 0, 0, -0.32);
-    for (let row = 0; row < 3; row++)
-      for (const side of [-1, 1])
-        for (let i = 0; i < 5; i++)
-          block(
-            m.dark,
-            side * (row === 1 ? 0.051 : 0.043),
-            (row - 1) * 0.025,
-            -0.235 - i * 0.037,
-            0.003,
-            0.017,
-            0.023,
-          );
+    tube(m.olive, 0.046, 0.34, 0, 0, -0.025);
+    tube(m.dark, 0.025, 0.34, 0, 0, -0.37);
+    perforatedShroud();
     ring(m.edge, 0.047, 0.005, 0, 0, 0.132);
     grip(m.walnut, 0.105);
     mag(
@@ -385,7 +456,16 @@ export function weaponModel(kind, surfaces, boxGeo, rawMods = {}) {
     for (let i = 0; i < 9; i++) {
       const x = -0.068 - i * 0.019,
         y = 0.002 - Math.max(0, i - 3) * 0.016;
-      tube(m.brass, 0.008, 0.074, x, y, -0.047);
+      tube(m.brass, 0.008, 0.059, x, y, -0.039);
+      const tip = mesh(
+        new THREE.CylinderGeometry(0.002, 0.006, 0.025, hero ? 20 : 8),
+        m.brass,
+        x,
+        y,
+        -0.081,
+      );
+      tip.rotation.x = -Math.PI / 2;
+      ring(m.steel, 0.008, 0.0018, x, y, -0.025);
       tube(m.dark, 0.009, 0.012, x, y, -0.02);
     }
     for (const side of [-1, 1]) {
@@ -523,6 +603,37 @@ export function weaponModel(kind, surfaces, boxGeo, rawMods = {}) {
       0.175,
       0.033,
     );
+  // Fasteners, milled seams, selector and sling fittings remain outside the sight line.
+  const width = pistol ? 0.045 : lmg ? 0.062 : smg ? 0.047 : 0.044;
+  for (const side of [-1, 1]) {
+    screw(side * width, -0.02, pistol ? 0.04 : 0.09);
+    screw(side * width, -0.04, pistol ? -0.09 : -0.17);
+    if (!scout) {
+      block(m.dark, side * width, 0.013, -0.075, 0.002, 0.003, pistol ? 0.1 : 0.24);
+      rod(
+        m.edge,
+        [side * (width + 0.003), -0.036, 0.07],
+        [side * (width + 0.003), -0.018, 0.1],
+        0.004,
+      );
+    }
+  }
+  if (hero) {
+    for (let i = 0; i < (pistol ? 7 : 12); i++)
+      block(
+        m.dark,
+        width + 0.003,
+        -0.045,
+        pistol ? -0.105 + i * 0.005 : -0.15 + i * 0.008,
+        0.002,
+        0.008,
+        0.002,
+      );
+    for (const z of [muzzle + 0.13, pistol ? 0.08 : 0.45]) {
+      const loop = ring(m.steel, 0.013, 0.0025, width, -0.045, z);
+      loop.rotation.y = Math.PI / 2;
+    }
+  }
   // Merge only rigid pieces sharing a material. Magazines, actions and pumps remain separate.
   const baked = [];
   for (const group of [root, action, magazine, pump].filter(Boolean)) {
@@ -551,6 +662,7 @@ export function weaponModel(kind, surfaces, boxGeo, rawMods = {}) {
   owned.forEach((g) => g.dispose());
   root.userData = {
     geometries: baked,
+    detail,
     magazine,
     magazineY: magazine.position.y,
     action,

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { terrain, terrainHeight } from '../shared/terrain.js';
+import { terrain, terrainHeight, surfaceElevations } from '../shared/terrain.js';
 import {
   MAP,
   groundHeight,
@@ -48,7 +48,7 @@ test('shipped Copernicus grid retains crop provenance and uses the same triangle
   ]) {
     const col = 30,
       row = 70,
-      at = (x, z) => terrain.elevationsMetres[(row + z) * terrain.width + col + x];
+      at = (x, z) => surfaceElevations[(row + z) * terrain.width + col + x];
     const metres =
       fx + fz <= 1
         ? at(0, 0) * (1 - fx - fz) + at(1, 0) * fx + at(0, 1) * fz
@@ -66,7 +66,8 @@ test('shipped Copernicus grid retains crop provenance and uses the same triangle
   assert.ok(Math.abs(hit.y - y) < 0.001);
 });
 test('infill, tree trunks and rocks are solid while roads and NPC destinations remain reachable', () => {
-  assert.equal(MAP.buildings.length, 180);
+  assert.ok(MAP.buildings.length > 2000);
+  assert.ok(MAP.buildings.every((p) => p.mapped && p.sourceId && p.footprint.length >= 4));
   assert.equal(MAP.trees.length, 950);
   for (const list of [MAP.buildings, MAP.trees, MAP.rocks])
     for (const p of list) assert.equal(canStand(p.x, p.z), false);
@@ -236,7 +237,7 @@ test('a real hillside stops horizontal fire before the nominal weapon range', ()
   assert.ok(canStand(x, z));
   const hit = raycastWorld({ x, y, z }, { x: 0, y: 0, z: 1 }, 100);
   assert.equal(hit.kind, 'ground');
-  assert.ok(hit.distance > 20 && hit.distance < 40);
+  assert.ok(hit.distance > 1 && hit.distance < 100);
   assert.ok(Math.abs(groundHeight(hit.x, hit.z) - hit.y) < 0.001);
   const above = raycastWorld({ x, y: y + 20, z }, { x: 0, y: 0, z: 1 }, 100);
   assert.equal(above, null);

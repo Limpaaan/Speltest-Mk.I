@@ -1,0 +1,366 @@
+{
+  "created": "2026-10-12",
+  "method": "generic neural text-to-speech, distinct rate and pitch profiles",
+  "voices": {
+    "maja": {
+      "name": "Maja",
+      "voice": "sv-SE-SofieNeural",
+      "rate": "-3%",
+      "pitch": "-4Hz",
+      "lang": "sv-SE"
+    },
+    "torsten": {
+      "name": "Torsten",
+      "voice": "sv-SE-MattiasNeural",
+      "rate": "-8%",
+      "pitch": "-14Hz",
+      "lang": "sv-SE"
+    },
+    "liv": {
+      "name": "Liv",
+      "voice": "sv-SE-SofieNeural",
+      "rate": "-10%",
+      "pitch": "+8Hz",
+      "lang": "sv-SE"
+    },
+    "einar": {
+      "name": "Einar",
+      "voice": "sv-SE-MattiasNeural",
+      "rate": "+9%",
+      "pitch": "+7Hz",
+      "lang": "sv-SE"
+    },
+    "anders": {
+      "name": "Anders",
+      "voice": "sv-SE-MattiasNeural",
+      "rate": "-4%",
+      "pitch": "-3Hz",
+      "lang": "sv-SE"
+    },
+    "signe": {
+      "name": "Signe",
+      "voice": "da-DK-ChristelNeural",
+      "rate": "-4%",
+      "pitch": "-2Hz",
+      "lang": "da-DK"
+    },
+    "raider": {
+      "name": "Kompanisoldat",
+      "voice": "da-DK-JeppeNeural",
+      "rate": "+8%",
+      "pitch": "-3Hz",
+      "lang": "da-DK"
+    },
+    "heavy": {
+      "name": "Pansarvakt",
+      "voice": "da-DK-JeppeNeural",
+      "rate": "-6%",
+      "pitch": "-18Hz",
+      "lang": "da-DK"
+    },
+    "marksman": {
+      "name": "Kompaniskytt",
+      "voice": "da-DK-ChristelNeural",
+      "rate": "+7%",
+      "pitch": "-7Hz",
+      "lang": "da-DK"
+    },
+    "rusher": {
+      "name": "Stormare",
+      "voice": "da-DK-JeppeNeural",
+      "rate": "+16%",
+      "pitch": "+10Hz",
+      "lang": "da-DK"
+    }
+  },
+  "lines": [
+    {
+      "id": "npc-maja",
+      "profile": "maja",
+      "text": "Välkommen hem till Avesta. Vi håller ihop och vi lämnar ingen bakom oss. Jag har arbete åt dig.",
+      "kind": "npc",
+      "file": "voices/npc-maja.mp3"
+    },
+    {
+      "id": "npc-torsten",
+      "profile": "torsten",
+      "text": "Verket må stå still, men mina händer gör det inte. Behöver du vapen, delar eller granater? Då har du kommit rätt.",
+      "kind": "npc",
+      "file": "voices/npc-torsten.mp3"
+    },
+    {
+      "id": "npc-liv",
+      "profile": "liv",
+      "text": "Ingen lämnas bakom. Kom hit så ser jag över dina sår. Du gör ingen nytta om du stupar på vägen.",
+      "kind": "npc",
+      "file": "voices/npc-liv.mp3"
+    },
+    {
+      "id": "npc-einar",
+      "profile": "einar",
+      "text": "Följ broarna och håll ögonen öppna. Kompaniet håller posteringarna, men resten av staden är vår väg igenom.",
+      "kind": "npc",
+      "file": "voices/npc-einar.mp3"
+    },
+    {
+      "id": "npc-anders",
+      "profile": "anders",
+      "text": "Glass eller döskalle? Jag ritar båda. En färgburk kostar tjugofem brukskronor och räcker till ett motiv.",
+      "kind": "npc",
+      "file": "voices/npc-anders.mp3"
+    },
+    {
+      "id": "brief-kopparbud",
+      "profile": "maja",
+      "text": "Jag tänkte stryka ditt namn i går. Tur att pennan frös. Min bror Nils saknas. Följ älven till Koppardalen och rekognoscera passagen. Vi behöver en säker väg.",
+      "kind": "quest",
+      "file": "voices/brief-kopparbud.mp3"
+    },
+    {
+      "id": "debrief-kopparbud",
+      "profile": "maja",
+      "text": "Maja drar tummen över märkningen du ritat av. Han märkte allt så där. Till och med kaffekoppen. Avbrottet var avsiktligt. Torsten känner igen kabeltypen: den går till Verkets reservställverk.",
+      "kind": "quest",
+      "file": "voices/debrief-kopparbud.mp3"
+    },
+    {
+      "id": "discovery-kopparbud",
+      "profile": "maja",
+      "text": "På kajen ligger en övergiven kabelvinda. Någon har skrivit NILS / SKIFT 3 på den. Kabeln är kapad med verktyg, inte söndersliten av strid.",
+      "kind": "quest",
+      "file": "voices/discovery-kopparbud.mp3"
+    },
+    {
+      "id": "brief-slagg",
+      "profile": "torsten",
+      "text": "Slaggjarlen håller Verket. Slå ut fem kompanisoldater och besegra honom. Ta hans orderbok. Vi måste få veta vart de fört driftpersonalen.",
+      "kind": "quest",
+      "file": "voices/brief-slagg.mp3"
+    },
+    {
+      "id": "debrief-slagg",
+      "profile": "torsten",
+      "text": "Torsten känner igen sitt gamla projekt i orderboken. Kopparhjärta skulle hålla sjukstugor och bostäder varma under ett långt avbrott. Nu används samma ledningar för att tvinga staden till lydnad. Nyckeln förs med kompaniets transport genom Åsbo.",
+      "kind": "quest",
+      "file": "voices/debrief-slagg.mp3"
+    },
+    {
+      "id": "discovery-slagg",
+      "profile": "torsten",
+      "text": "Orderboken beskriver ett isolerat kraftnät: KOPPARHJÄRTA. Kompaniet ska skicka energin till sitt eget förråd medan bostäderna förblir mörka. En anteckning lyder: Nyckelbärare till Åsbo.",
+      "kind": "quest",
+      "file": "voices/discovery-slagg.mp3"
+    },
+    {
+      "id": "brief-horse",
+      "profile": "einar",
+      "text": "Transporten står vid Dalahästen i Åsbo. Ryttmästare Mörk bevakar nyckeln. Besegra honom och öppna vår samlingsplats igen.",
+      "kind": "quest",
+      "file": "voices/brief-horse.mp3"
+    },
+    {
+      "id": "debrief-horse",
+      "profile": "einar",
+      "text": "Maja vill genast springa till Aaltohuset, men Liv får henne att sätta sig. Handskriften är Nils. Nyckeln passar arkivet, och hans varning betyder att någon ändrat kopplingsschemat. Att bara slå på strömmen kan bli ödesdigert.",
+      "kind": "quest",
+      "file": "voices/debrief-horse.mp3"
+    },
+    {
+      "id": "discovery-horse",
+      "profile": "einar",
+      "text": "I transportens order ligger en mässingsnyckel och en vikt lapp: Aalto. Pappersarkivet. Lita inte på schemat i ställverket. / N",
+      "kind": "quest",
+      "file": "voices/discovery-horse.mp3"
+    },
+    {
+      "id": "brief-arkivet",
+      "profile": "torsten",
+      "text": "Gå in i Aaltohuset genom den östra entrén. Driftjournalen finns i det västra arkivrummet. Jag behöver originalschemat. Följ guldmarkeringen på kartan.",
+      "kind": "quest",
+      "file": "voices/brief-arkivet.mp3"
+    },
+    {
+      "id": "debrief-arkivet",
+      "profile": "torsten",
+      "text": "Torsten lägger originalet över kompaniets schema. Om huvudbrytaren slås till nu går sjukstugans utrustning sönder. Nils har lämnat en säker ordning och ett radioanrop. Einar minns rösten bakom Lärka: en dansk sambandstekniker som försökt varna civila.",
+      "kind": "quest",
+      "file": "voices/debrief-arkivet.mp3"
+    },
+    {
+      "id": "discovery-arkivet",
+      "profile": "torsten",
+      "text": "Nils har ringat in tre punkter: Skogsbo, Prästjorden och brofästet. Under dem: Sjukhusledningen är felmärkt. Bryt aldrig innan reservaggregatet går. På sista sidan finns ett anropsnamn: LÄRKA.",
+      "kind": "quest",
+      "file": "voices/discovery-arkivet.mp3"
+    },
+    {
+      "id": "brief-larka",
+      "profile": "einar",
+      "text": "Säkra området vid Skogsbos reservradio. Tryck E och stå still i sex sekunder. Vi ska få kontakt med Lärka. Rörelse och strid bryter arbetet.",
+      "kind": "quest",
+      "file": "voices/brief-larka.mp3"
+    },
+    {
+      "id": "debrief-larka",
+      "profile": "einar",
+      "text": "Maja är tyst länge. Nils lever, men går inte att nå i natt. Då gör vi det han bad oss om. Signe skickar en verifieringskod. Liv påminner er om det viktigaste: utan sjukstugans reservkraft blir en seger vid ställverket bara ännu en förlust.",
+      "kind": "quest",
+      "file": "voices/debrief-larka.mp3"
+    },
+    {
+      "id": "discovery-larka",
+      "profile": "signe",
+      "text": "Jag heter Signe, säger rösten. Jag lagade radio. Jag skrev aldrig under på att frysa ut familjer. Hon såg Nils föras ut ur staden, vid liv. Hon kan öppna kompaniets frekvens en enda gång, om sjukstugan och broreläet är redo.",
+      "kind": "quest",
+      "file": "voices/discovery-larka.mp3"
+    },
+    {
+      "id": "brief-varmen",
+      "profile": "liv",
+      "text": "Sjukstugans värme kommer först. Starta reservaggregatet i Prästjorden. Tryck E och håll positionen i sex sekunder. Bränsle och delar är redan framlagda.",
+      "kind": "quest",
+      "file": "voices/brief-varmen.mp3"
+    },
+    {
+      "id": "debrief-varmen",
+      "profile": "liv",
+      "text": "Maja gör det första märket på den rena sidan av sin lista: Prästjorden – ström. Signe har hållit sitt löfte. Nu återstår broreläet, så att båda sidor av älven kan höra samma instruktion när Torsten kopplar om.",
+      "kind": "quest",
+      "file": "voices/debrief-varmen.mp3"
+    },
+    {
+      "id": "discovery-varmen",
+      "profile": "liv",
+      "text": "Motorn hostar, stannar och hittar sedan sin rytm. Inifrån huset hörs ett skratt när den första lampan tänds. Liv ropar i radion: Temperaturen stiger. Fortsätt. Vi klarar oss här.",
+      "kind": "quest",
+      "file": "voices/discovery-varmen.mp3"
+    },
+    {
+      "id": "brief-samband",
+      "profile": "einar",
+      "text": "Gå till sambandslådan vid Skogsbobrons markerade brofäste. Tryck E och håll förbindelsen i åtta sekunder. Använd bron. Gå inte genom älven.",
+      "kind": "quest",
+      "file": "voices/brief-samband.mp3"
+    },
+    {
+      "id": "debrief-samband",
+      "profile": "einar",
+      "text": "Einar får svar från Skogsbo, Åsbo och kvarteren vid älven. Ingen av dem frågar vem som ska få äran. De frågar när de ska slå till sina brytare. Torsten räcker dig originalschemat: Nu gör vi ett riktigt skift.",
+      "kind": "quest",
+      "file": "voices/debrief-samband.mp3"
+    },
+    {
+      "id": "discovery-samband",
+      "profile": "einar",
+      "text": "Bruset öppnar sig. Signe räknar ner, och sedan hör du Maja: Alla skift, lyssna. Håll bostadsledningarna öppna. Rör inte sjukstugans reserv. För första gången svarar röster från båda stränderna.",
+      "kind": "quest",
+      "file": "voices/discovery-samband.mp3"
+    },
+    {
+      "id": "brief-kopparhjarta",
+      "profile": "torsten",
+      "text": "Återvänd till Verket. Vid den manuella omkopplaren trycker du E och håller positionen i tio sekunder. Säkra området först. Jag leder dig över radion. Sedan återvänder du till Maja.",
+      "kind": "quest",
+      "file": "voices/brief-kopparhjarta.mp3"
+    },
+    {
+      "id": "debrief-kopparhjarta",
+      "profile": "torsten",
+      "text": "Först tänds en lampa i sjukstugan. Sedan svarar Skogsbo på radion. Maja viker ihop listan över saknade; arbetet med att hitta dem börjar i morgon. Avesta är fortfarande sargat och kompaniets patruller finns kvar, men värmen och rösterna tillhör åter dem som bor här. Du vann inget rike. Du gav din hemstad en morgondag. Det sista skiftet blev det första.",
+      "kind": "quest",
+      "file": "voices/debrief-kopparhjarta.mp3"
+    },
+    {
+      "id": "discovery-kopparhjarta",
+      "profile": "torsten",
+      "text": "Ett. Två. Håll kvar. Kontakten slår med ett ljud som känns i bröstet. Ingen explosion. Bara en fläkt som börjar snurra, ett kylskåp som brummar och en rad röster som säger: Vi har ström.",
+      "kind": "quest",
+      "file": "voices/discovery-kopparhjarta.mp3"
+    },
+    {
+      "id": "enemy-raider-0",
+      "profile": "raider",
+      "text": "Kom frem! Jeg kan høre dine træsko!",
+      "kind": "enemy",
+      "file": "voices/enemy-raider-0.mp3"
+    },
+    {
+      "id": "enemy-raider-1",
+      "profile": "raider",
+      "text": "Du kan ikke gemme dig bag en dalahest!",
+      "kind": "enemy",
+      "file": "voices/enemy-raider-1.mp3"
+    },
+    {
+      "id": "enemy-raider-2",
+      "profile": "raider",
+      "text": "Hænderne op! Jeg har stadig kaffe i termokanden!",
+      "kind": "enemy",
+      "file": "voices/enemy-raider-2.mp3"
+    },
+    {
+      "id": "enemy-heavy-0",
+      "profile": "heavy",
+      "text": "Dalahesten redder dig ikke!",
+      "kind": "enemy",
+      "file": "voices/enemy-heavy-0.mp3"
+    },
+    {
+      "id": "enemy-heavy-1",
+      "profile": "heavy",
+      "text": "Vi tager broen, og bagefter tager vi kaffen!",
+      "kind": "enemy",
+      "file": "voices/enemy-heavy-1.mp3"
+    },
+    {
+      "id": "enemy-heavy-2",
+      "profile": "heavy",
+      "text": "Nu bliver der ballade!",
+      "kind": "enemy",
+      "file": "voices/enemy-heavy-2.mp3"
+    },
+    {
+      "id": "enemy-marksman-0",
+      "profile": "marksman",
+      "text": "Stå stille! Du ødelægger mit sigte!",
+      "kind": "enemy",
+      "file": "voices/enemy-marksman-0.mp3"
+    },
+    {
+      "id": "enemy-marksman-1",
+      "profile": "marksman",
+      "text": "Der er du! Ingen gemmer sig for Jernsund!",
+      "kind": "enemy",
+      "file": "voices/enemy-marksman-1.mp3"
+    },
+    {
+      "id": "enemy-marksman-2",
+      "profile": "marksman",
+      "text": "Jeg kan se dig. Og nej, det er ikke en invitation til kaffe!",
+      "kind": "enemy",
+      "file": "voices/enemy-marksman-2.mp3"
+    },
+    {
+      "id": "enemy-rusher-0",
+      "profile": "rusher",
+      "text": "Jeg havde fri i dag, så skynd dig!",
+      "kind": "enemy",
+      "file": "voices/enemy-rusher-0.mp3"
+    },
+    {
+      "id": "enemy-rusher-1",
+      "profile": "rusher",
+      "text": "Tilbage til jeres værksted!",
+      "kind": "enemy",
+      "file": "voices/enemy-rusher-1.mp3"
+    },
+    {
+      "id": "enemy-rusher-2",
+      "profile": "rusher",
+      "text": "Løb bare! Jeg har taget løbeskoene på!",
+      "kind": "enemy",
+      "file": "voices/enemy-rusher-2.mp3"
+    }
+  ],
+  "note": "No voice of a real NPC namesake was cloned. Profiles sharing a base voice are pitch/rate variants."
+}

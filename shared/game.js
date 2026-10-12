@@ -13,6 +13,7 @@ import {
 import { newEconomy, economyAction, rollDrop, collect, restoreEconomy, CACHES } from './economy.js';
 import { SPECIALTIES, canEquip, armorLimit, talentAction, restoreTalents } from './talents.js';
 import { ENEMY_TYPES } from './enemies.js';
+import { ENCOUNTER_ZONES, encounterSpawns } from './encounters.js';
 import { WEAPONS } from './weapons.js';
 export { WEAPONS } from './weapons.js';
 import {
@@ -175,17 +176,17 @@ export function createWorld({ pvp = false, random = Math.random } = {}) {
     pvp,
     respawns: [],
   };
-  const camps = MAP.places.filter((p) => !['aalto', 'horse'].includes(p.id));
-  for (const camp of camps)
-    for (let i = 0; i < 3; i++) {
-      const position = walkableNear(camp.x + 30 + i * 9, camp.z + 28 + i * 7);
-      spawnEnemy(
+  for (const camp of ENCOUNTER_ZONES)
+    encounterSpawns(camp).forEach((position, i) => {
+      const e = spawnEnemy(
         w,
         position.x,
         position.z,
-        ['raider', 'rusher', camp.id === 'verket' ? 'heavy' : 'marksman'][i],
+        ['raider', 'rusher', 'raider', 'marksman', 'heavy'][i % 5],
       );
-    }
+      e.zoneId = camp.id;
+      e.leash = camp.radius + 25;
+    });
   for (const [id, name, title] of [
     ['verket', 'Slaggjarlen', 'Verkets belägringsmaskin'],
     ['horse', 'Ryttmästare Mörk', 'Dalahästens ockupant'],
@@ -373,6 +374,8 @@ function killEnemy(w, e, p) {
     name: e.name,
     title: e.title,
     landmark: e.landmark,
+    zoneId: e.zoneId,
+    leash: e.leash,
   });
   questCheck(w, p);
 }
@@ -821,6 +824,7 @@ export function tick(w, dt) {
     const aggroRange = boss ? 100 : 75;
     const candidates = targets.filter(
       (p) =>
+        (!e.leash || Math.hypot(p.x - e.homeX, p.z - e.homeZ) < e.leash) &&
         Math.hypot(p.x - e.x, p.z - e.z) <
           (p.camouflage > 0 ? 14 : aggroRange * (hasSkill(p, 'softstep') && p.crouch ? 0.6 : 1)) &&
         ((w.time < e.alertUntil && e.targetId === p.id) || clearShot(e, p)),
@@ -882,6 +886,8 @@ export function tick(w, dt) {
             endZ: p.z,
             time: w.time,
             enemy: true,
+            owner: e.id,
+            kind: stats.weapon || 'rifle',
           });
         }
       }
@@ -949,7 +955,11 @@ export function tick(w, dt) {
   w.enemies = w.enemies.filter((e) => e.hp > 0);
   w.loot = w.loot.filter((l) => l.expires > w.time && w.players[l.owner]);
   for (const r of w.respawns.filter((r) => r.time <= w.time))
-    spawnEnemy(w, r.x, r.z, r.type, r.name, r.title).landmark = r.landmark;
+    Object.assign(spawnEnemy(w, r.x, r.z, r.type, r.name, r.title), {
+      landmark: r.landmark,
+      zoneId: r.zoneId,
+      leash: r.leash,
+    });
   w.respawns = w.respawns.filter((r) => r.time > w.time);
   for (const p of Object.values(w.players)) tickStory(w, p, dt, notice);
 }

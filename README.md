@@ -4,7 +4,7 @@
 
 En spelbar, svenskspråkig **3D RPG-lootershooterprototyp** i ett postapokalyptiskt Avesta. Stadens försvarare möter det fiktiva danska **Järnsundskompaniet**, en militär invasionsfraktion. Berättelsen handlar om hembygd, gemenskap och motstånd. Fraktionen representerar inte danskar som folk.
 
-Version **0.7** är en spelbar webbläsarprototyp med FPS-vy, verkliga Copernicus-höjder, tätare bebyggelse, skog och stenblock. Grundhastigheten är ungefär 60 procent lägre; terräng och lutning påverkar färden. Vägar och älvförlopp bygger på OpenStreetMap. Tio kartpunkter har källbelagda positioner. Plushuset, Åsbo och de nytillkomna kvartersbyggnaderna är ungefärliga. Omgivningshus, vegetation och byggnadernas arkitektur är tolkade, inte uppmätta. Se [kartans status och datakällor](docs/MAP.md).
+Version **0.8** har lugnare mark, utjämnade terränghöjder och mjukare kamerarörelse. Över 2 600 hus bygger på daterade OpenStreetMap-fotavtryck; åtta nya landmärken binder samman kvarteren. Fem bevakade områden ersätter fiender utspridda över hela kartan. Sex mer detaljerade vapen har egna ljud. Uppdrag, NPC-hälsningar och danska fienderepliker använder 41 medföljande ljudfiler med olika röstprofiler. GPU-prestandaläge kan väljas i inställningarna. Se [versionens utförande och datakällor](docs/RELEASE-0.8.md).
 
 Spela på **https://limpaaan.github.io/Speltest-Mk.I/**. Ingen installation behövs för spelaren.
 

@@ -1,7 +1,11 @@
+import { icon, iconLabel } from './icons.js';
+import { wallet, directory, NPC_SERVICES } from './pack-ui.js';
+import { VoiceTranscript } from './transcript.js';
 import { PROFESSIONS } from './humans.js';
+import { GameAudio } from './audio.js';
 import { daylight } from '../shared/daylight.js';
 import { CLASS_SKILLS } from '../shared/class-skills.js';
-import { nearbyStory, EPILOGUE } from '../shared/story.js';
+import { nearbyStory, EPILOGUE, campaignTarget } from '../shared/story.js';
 import { renderJournal, objectiveText } from './journal.js';
 import { PAINTS } from '../shared/artist.js';
 import { artistPanel } from './artist-ui.js';
@@ -24,7 +28,7 @@ import {
 import { validateUsername, isAdmin, adminAction } from '../shared/admin.js';
 import './style.css';
 import { WorldView, drawMap } from './view.js';
-import { MAP, inArena, inSanctuary, clearShot } from '../shared/map.js';
+import { MAP, inArena, inSanctuary, clearShot, HUB } from '../shared/map.js';
 import {
   CLASSES,
   RARITIES,
@@ -46,6 +50,13 @@ const configuredServer = import.meta.env.VITE_GAME_SERVER_URL || '';
 const multiplayerAvailable =
   import.meta.env.VITE_STATIC_HOST !== 'true' || Boolean(configuredServer);
 const $ = (id) => document.getElementById(id);
+const audio = new GameAudio($('speech-caption'));
+audio.transcript = new VoiceTranscript(
+  ['camp-transcript', 'npc-transcript', 'journal-transcript'].map($),
+);
+let guideTarget = null;
+let currentNpc = null,
+  spokenCampKey = '';
 let selected = 'stalvakt',
   mode = null,
   world = createWorld(),
@@ -132,7 +143,7 @@ function renderClasses() {
 }
 renderClasses();
 try {
-  view = new WorldView($('scene'));
+  view = new WorldView($('scene'), settings);
 } catch (error) {
   console.error(error);
   status('3D-grafik kunde inte starta. Aktivera WebGL i en modern datorwebbläsare.');
@@ -163,6 +174,8 @@ function persist() {
   }
 }
 function enter() {
+  audio.reset();
+  view?.cameraTrack.reset();
   look = { yaw: Math.PI, pitch: 0 };
   crouch = false;
   document.body.classList.add('playing');
@@ -174,6 +187,7 @@ function enter() {
   updateHUD();
 }
 function leave(message) {
+  audio.stop();
   persist();
   const old = socket;
   socket = null;
@@ -194,6 +208,7 @@ function leave(message) {
 $('play-offline').onclick = () => {
   const name = chosenName();
   if (!name) return;
+  audio.unlock();
   const pending = socket;
   socket = null;
   pending?.close();
@@ -211,6 +226,7 @@ $('play-online').onclick = () => {
   if (!multiplayerAvailable) return;
   const name = chosenName();
   if (!name) return;
+  audio.unlock();
   const room = $('room-code').value.trim().toUpperCase();
   if (!/^[A-Z0-9-]{1,16}$/.test(room))
     return status('Ange en rumskod med 1–16 bokstäver, siffror eller bindestreck.');
@@ -296,7 +312,10 @@ function openDialog(dialog) {
   dialog.showModal();
   if (dialog === $('inventory-dialog')) renderInventory();
   if (dialog === $('admin-dialog')) renderAdmin(true);
-  if (dialog === $('camp-dialog')) renderCamp();
+  if (dialog === $('camp-dialog')) {
+    spokenCampKey = '';
+    renderCamp();
+  }
   if (dialog === $('journal-dialog')) renderJournal($('journal-content'), state.players[myId]);
 }
 function pause() {
@@ -321,6 +340,7 @@ $('resume').onclick = () => {
   captureMouse();
 };
 $('leave').onclick = () => leave();
+$('journal-button').onclick = () => openDialog($('journal-dialog'));
 $('inventory-button').onclick = () => openDialog($('inventory-dialog'));
 $('respawn').onclick = () => {
   action({ type: 'respawn' });
@@ -345,6 +365,22 @@ for (const b of document.querySelectorAll('.close-dialog'))
   };
 $('death-dialog').addEventListener('cancel', (e) => e.preventDefault());
 for (const d of dialogs) d.addEventListener('close', resetInput);
+for (const d of [$('camp-dialog'), $('npc-dialog')])
+  d.addEventListener('close', () => audio.stopVoice());
+for (const b of document.querySelectorAll('.stop-voice')) b.onclick = () => audio.stopVoice();
+$('npc-listen').onclick = () => {
+  audio.unlock().then(() => {
+    if (currentNpc) audio.speak(`npc-${currentNpc.id}`);
+  });
+};
+$('quest-listen').onclick = () => {
+  audio.unlock().then(() => {
+    const p = state.players[myId],
+      c = CONTRACTS[p?.campaign.step];
+    if (c) audio.speak(`brief-${c.id}`);
+    else audio.speak('debrief-kopparhjarta');
+  });
+};
 window.addEventListener('keydown', (e) => {
   if (!mode || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
   const k = e.key.toLowerCase();
@@ -411,7 +447,7 @@ window.addEventListener('keydown', (e) => {
     expanded = !expanded;
     document.querySelector('.map-panel').classList.toggle('expanded', expanded);
     $('minimap').width = $('minimap').height = expanded ? 700 : 260;
-    drawMap($('minimap'), state, myId, expanded);
+    drawMap($('minimap'), state, myId, expanded, guideTarget);
   }
 });
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
@@ -498,8 +534,9 @@ function renderInventory() {
   ]);
   if (signature === inventorySignature) return;
   inventorySignature = signature;
+  wallet($('inventory-wallet'), p);
   $('inventory-stats').textContent =
-    `${p.credits} brukskronor · ${p.scrap} skrot · ${p.points} talangpoäng · Eldkraft ${p.power} · Livskraft ${p.vitality} · Rustning ${p.armor || 0}/${armorLimit(p)} · ${p.inventory.length}/16 platser`;
+    `${p.points} talangpoäng · Eldkraft ${p.power} · Livskraft ${p.vitality} · Rustning ${p.armor || 0}/${armorLimit(p)}`;
   $('talent-power').disabled = $('talent-vitality').disabled = p.points <= 0;
   $('inventory-items').replaceChildren();
   for (const item of p.inventory) {
@@ -531,7 +568,8 @@ function renderInventory() {
       action({ type: 'salvage', id: item.id });
       renderInventory();
     };
-    row.append(desc, equip, scrap);
+    row.dataset.weapon = item.kind;
+    row.append(icon(item.kind), desc, equip, scrap);
     $('inventory-items').append(row);
   }
   equipmentPanel($('equipment-panel'), p, (a) => {
@@ -543,6 +581,18 @@ function renderInventory() {
 function updateHUD() {
   const p = state.players[myId];
   if (!p || !mode) return;
+  wallet($('hud-wallet'), p, true);
+  if ($('weapon-icon').dataset.kind !== p.weapon.kind) {
+    $('weapon-icon').replaceChildren(icon(p.weapon.kind));
+    $('weapon-icon').dataset.kind = p.weapon.kind;
+  }
+  if (guideTarget && Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z) < 4) guideTarget = null;
+  $('guide-hint').textContent = guideTarget
+    ? `→ ${guideTarget.name} · ${NPC_SERVICES[guideTarget.id].place} · ${Math.round(Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z))} m`
+    : inSanctuary(p)
+      ? 'SKIFTGÅRDEN · E pratar · J visar stationer'
+      : '';
+  if ($('journal-dialog').open) directory($('journal-directory'), HUB.stations, p, guideTo);
   const c = CLASSES[p.classId];
   $('session').textContent =
     mode === 'offline'
@@ -558,6 +608,7 @@ function updateHUD() {
   if ($('camp-dialog').open) renderCamp();
   if ($('journal-dialog').open) renderJournal($('journal-content'), p);
   if ($('npc-dialog').open) {
+    updateNpcService(p);
     $('npc-message').textContent = state.time < p.messageUntil ? p.message : '';
     if (!$('npc-market').hidden) marketPanel($('npc-market'), p, action);
     if (!$('artist-panel').hidden) artistPanel($('artist-panel'), p, action);
@@ -701,7 +752,9 @@ function frame(now) {
   if (!mode || mode === 'online') accumulator = 0;
   renderClock += dt;
   const active = mode && pointerLocked() && !paused();
-  const interval = view?.softwareRenderer ? (active ? 1 / 20 : 0.5) : active ? 1 / 60 : 1 / 15;
+  if (mode) audio.update(state, myId, { paused: paused(), active });
+  view?.adaptResolution(dt, Boolean(active));
+  const interval = view?.softwareRenderer ? (active ? 1 / 20 : 0.5) : active ? 0 : 1 / 15;
   document.body.classList.toggle('aiming', Boolean(active && mouse.ads));
   if (renderClock >= interval && !document.hidden) {
     view?.render(state, myId, renderClock, Boolean(mode), elapsed, {
@@ -811,12 +864,38 @@ function renderCamp() {
   if (!p) return;
   const status = campaignStatus(p),
     contract = CONTRACTS[p.campaign.step];
+  const narrationKey = `${p.campaign.step}`;
+  if (narrationKey !== spokenCampKey) {
+    const previous = spokenCampKey;
+    spokenCampKey = narrationKey;
+    if (previous !== '' && p.campaign.step > 0)
+      audio.speak(`debrief-${CONTRACTS[p.campaign.step - 1].id}`);
+    else if (contract) audio.speak(`brief-${contract.id}`);
+    else audio.speak('debrief-kopparhjarta');
+  }
   $('contract-title').textContent = status.title;
+  $('contract-chapter').textContent = `${Math.min(p.campaign.step + 1, 8)} / 8`;
+  const target = campaignTarget(p);
+  $('contract-objective').replaceChildren(
+    iconLabel(
+      'quest',
+      status.ready
+        ? 'Återvänd till Maja och lämna in uppdraget'
+        : target
+          ? `${target.name} · ${Math.round(Math.hypot(target.x - p.x, target.z - p.z))} m · följ guldmarkeringen`
+          : 'Ta uppdraget för att aktivera kartmålet',
+    ),
+  );
+  $('contract-rewards').replaceChildren(
+    ...(contract
+      ? [iconLabel('quest', `${contract.xp} XP`), iconLabel('scrap', `${contract.scrap} skrot`)]
+      : []),
+  );
+  directory($('hub-directory'), HUB.stations, p, guideTo);
   $('contract-previous').textContent =
     p.campaign.step > 0 ? CONTRACTS[p.campaign.step - 1].debrief : '';
   $('contract-story').textContent = contract ? contract.text : EPILOGUE;
-  $('contract-progress').textContent =
-    status.progress + (contract ? ` · Belöning: ${contract.xp} XP, ${contract.scrap} skrot` : '');
+  $('contract-progress').textContent = status.progress;
   $('contract-action').textContent = status.complete
     ? 'ALLA UPPDRAG KLARA'
     : !p.campaign.active
@@ -829,8 +908,11 @@ function renderCamp() {
   $('workshop-stats').textContent =
     `${p.scrap} skrot · Rustning ${p.armor}/${armorLimit(p)} (${p.armor * 8 + (p.skills.includes('armor_training') ? 4 : 0)}% skademinskning). Vapen tillverkas som ovanliga på din nuvarande nivå ${p.level}.`;
   for (const [kind, recipe] of Object.entries(RECIPES)) {
-    $('craft-' + kind).textContent =
-      `${recipe.name} · ${craftCost(p, kind)} skrot + ${recipeText(WEAPON_RECIPES[kind])}`;
+    const caption = `${recipe.name} · ${craftCost(p, kind)} skrot + ${recipeText(WEAPON_RECIPES[kind])}`;
+    if ($('craft-' + kind).dataset.caption !== caption) {
+      $('craft-' + kind).replaceChildren(icon(kind), document.createTextNode(caption));
+      $('craft-' + kind).dataset.caption = caption;
+    }
     $('craft-' + kind).disabled =
       p.scrap < craftCost(p, kind) ||
       !hasMaterials(p, WEAPON_RECIPES[kind]) ||
@@ -855,6 +937,8 @@ function renderCamp() {
 
 function applySettings(save = false) {
   view?.applySettings(settings);
+  audio.configure(settings);
+  $('settings-gpu-restart').hidden = !view || settings.gpuPerformance === view.initialGpuPreference;
   $('crosshair').textContent = { cross: '+', dot: '•', circle: '○', none: '' }[settings.crosshair];
   $('crosshair').style.color = settings.crosshairColor;
   $('crosshair').style.fontSize = `${settings.crosshairSize}px`;
@@ -896,6 +980,10 @@ for (const key of Object.keys(DEFAULT_SETTINGS))
     });
     applySettings(true);
   });
+$('settings-gpu-restart').onclick = () => {
+  persist();
+  location.reload();
+};
 $('settings-reset').onclick = () => {
   settings = { ...DEFAULT_SETTINGS };
   applySettings(true);
@@ -903,16 +991,24 @@ $('settings-reset').onclick = () => {
 applySettings();
 
 function openNpc(npc) {
+  currentNpc = npc;
   $('artist-panel').hidden = npc.id !== 'anders';
   $('npc-service').hidden = npc.id === 'anders';
   if (npc.id === 'anders') artistPanel($('artist-panel'), state.players[myId], action);
   $('npc-market').hidden = npc.id !== 'torsten';
   if (npc.id === 'torsten') marketPanel($('npc-market'), state.players[myId], action);
   $('npc-name').textContent = npc.name;
+  const info = NPC_SERVICES[npc.id];
+  $('npc-services').replaceChildren(
+    iconLabel(info.icon, `${info.role} · ${info.place}`, 'strong'),
+    Object.assign(document.createElement('p'), { textContent: info.summary }),
+  );
+  updateNpcService(state.players[myId]);
   $('npc-text').textContent = npc.text;
   $('npc-service').textContent = npc.label;
   $('npc-service').onclick = () => action({ type: 'npc', npcId: npc.id });
   openDialog($('npc-dialog'));
+  audio.speak(`npc-${npc.id}`);
 }
 $('admin-item-kind').replaceChildren(
   ...Object.entries(WEAPONS).map(([id, w]) => {
@@ -945,3 +1041,38 @@ $('admin-resource-form').onsubmit = (e) => {
     quantity: Number($('admin-resource-count').value),
   });
 };
+
+function guideTo(station) {
+  guideTarget = station;
+  expanded = true;
+  dialogs.forEach((d) => d.close());
+  releaseMouse();
+  document.querySelector('.map-panel').classList.add('expanded');
+  updateHUD();
+}
+function updateNpcService(p) {
+  if (!currentNpc) return;
+  const id = currentNpc.id;
+  const message =
+    id === 'liv'
+      ? 'Hälsa ' + Math.ceil(p.hp) + ' / ' + maxHp(p) + ' · Du har ' + p.scrap + ' skrot'
+      : id === 'torsten'
+        ? 'Granater ' + p.grenades + ' / 6 · Du har ' + p.scrap + ' skrot'
+        : id === 'anders'
+          ? 'Du har ' + p.credits + ' brukskronor'
+          : p.intel > 0
+            ? 'Spaning aktiv · ' + Math.ceil(p.intel) + ' s återstår'
+            : 'Kostnadsfri spaning · varar i 120 sekunder';
+  $('npc-service-status').textContent = message;
+  $('npc-service').disabled =
+    id === 'liv'
+      ? p.hp >= maxHp(p) || p.scrap < 10
+      : id === 'torsten'
+        ? p.grenades >= 6 || p.scrap < 20
+        : false;
+}
+for (const button of document.querySelectorAll('[data-jump]'))
+  button.onclick = () =>
+    document
+      .getElementById(button.dataset.jump)
+      ?.scrollIntoView({ block: 'start', behavior: 'smooth' });

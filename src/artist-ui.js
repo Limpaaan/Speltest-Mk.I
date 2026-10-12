@@ -1,3 +1,4 @@
+import { icon } from './icons.js';
 import { PAINTS, MOTIFS, PAINT_PRICE, PROPERTY, atArtist } from '../shared/artist.js';
 const node = (tag, text) => {
   const n = document.createElement(tag);
@@ -17,14 +18,15 @@ export function artistPanel(root, p, action) {
   root.dataset.signature = signature;
   root.replaceChildren();
   root.append(node('h3', `Sprayfärg · ${p.credits} brukskronor`));
-  for (const [color, item] of Object.entries(PAINTS))
-    root.append(
-      button(
-        `${item.name} · ${PAINT_PRICE} kr · äger ${p.paint[color]}`,
-        p.credits < PAINT_PRICE || p.paint[color] >= 10 || !atArtist(p),
-        () => action({ type: 'buy_paint', color }),
-      ),
+  for (const [color, item] of Object.entries(PAINTS)) {
+    const buy = button(
+      `${item.name} · ${PAINT_PRICE} kr · äger ${p.paint[color]}`,
+      p.credits < PAINT_PRICE || p.paint[color] >= 10 || !atArtist(p),
+      () => action({ type: 'buy_paint', color }),
     );
+    buy.prepend(icon('paint', item.color));
+    root.append(buy);
+  }
   root.append(
     node(
       'p',
@@ -35,31 +37,34 @@ export function artistPanel(root, p, action) {
   link.href = PROPERTY.url;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
-  root.append(
-    node('h3', 'Bostadskoll'),
+  const property = document.createElement('details');
+  property.append(
+    node('summary', 'Bostadskoll'),
     node(
       'p',
       'Aktuellt uppskattat värde har inte verifierats. Öppna Booli för att kontrollera rätt bostad, värde och datum.',
     ),
     link,
   );
+  root.append(property);
 }
 export function paintPanel(root, p, action) {
   root.append(
     node('h3', 'Sprayburkar från Anders Delbom'),
     node(
       'p',
-      'B · Spraya valt motiv på fri mark. Anders tillfälliga ateljé är markerad på den stora kartan (M).',
+      'B · Spraya valt motiv på fri mark. Anders fältateljé finns i den bevakade Skiftgården.',
     ),
   );
-  for (const [color, item] of Object.entries(PAINTS))
-    root.append(
-      button(
-        `${p.paintColor === color ? '✓ ' : ''}${item.name} ×${p.paint[color]}`,
-        !p.paint[color],
-        () => action({ type: 'select_paint', color }),
-      ),
+  for (const [color, item] of Object.entries(PAINTS)) {
+    const select = button(
+      `${p.paintColor === color ? '✓ ' : ''}${item.name} ×${p.paint[color]}`,
+      !p.paint[color],
+      () => action({ type: 'select_paint', color }),
     );
+    select.prepend(icon('paint', item.color));
+    root.append(select);
+  }
   for (const [motif, name] of Object.entries(MOTIFS))
     root.append(
       button(`${p.paintMotif === motif ? '✓ ' : ''}${name}`, false, () =>

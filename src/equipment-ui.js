@@ -1,3 +1,5 @@
+import { icon, iconLabel } from './icons.js';
+import { materialCards } from './pack-ui.js';
 import { paintPanel } from './artist-ui.js';
 import {
   MATERIALS,
@@ -24,24 +26,21 @@ function button(text, disabled, click) {
 }
 export function equipmentPanel(root, p, action) {
   root.replaceChildren();
-  root.append(
-    node('h3', 'Material & förbrukningsvaror'),
-    node(
-      'p',
-      Object.entries(MATERIALS)
-        .map(([k, m]) => `${m.name}: ${p.materials[k]}`)
-        .join(' · '),
-    ),
-  );
-  for (const [key, n] of Object.entries(p.supplies))
-    root.append(
-      button(`${SUPPLY_RECIPES[key].name} ×${n} · ANVÄND`, !n, () =>
-        action({ type: 'use_supply', key }),
-      ),
+  root.append(node('h3', 'Material'));
+  materialCards(root, p);
+  const suppliesTitle = node('h3', 'Förbrukningsvaror');
+  suppliesTitle.id = 'pack-supplies';
+  root.append(suppliesTitle);
+  for (const [key, n] of Object.entries(p.supplies)) {
+    const use = button(`${SUPPLY_RECIPES[key].name} ×${n} · ANVÄND`, !n, () =>
+      action({ type: 'use_supply', key }),
     );
+    use.prepend(icon(key));
+    root.append(use);
+  }
   paintPanel(root, p, action);
   root.append(
-    node('h3', `Vapendelar · ${p.weapon.name}`),
+    Object.assign(iconLabel('tools', `Vapendelar · ${p.weapon.name}`, 'h3'), { id: 'pack-parts' }),
     node('p', 'Montera på utrustat vapen. Högst en del per plats. L tänder brukslampan.'),
   );
   for (const [slot, key] of Object.entries(p.weapon.mods || {}))
@@ -55,7 +54,7 @@ export function equipmentPanel(root, p, action) {
       row = node('div', '');
     row.className = 'equipment-row';
     row.append(
-      node('p', `${a.name} ×${count} · ${a.description}`),
+      iconLabel(key, `${a.name} ×${count} · ${a.description}`, 'p'),
       button(
         compatible(p.weapon.kind, key) ? 'MONTERA' : 'PASSAR INTE',
         p.reload > 0 || !compatible(p.weapon.kind, key),
@@ -65,7 +64,7 @@ export function equipmentPanel(root, p, action) {
     root.append(row);
   }
   root.append(
-    node('h3', 'Talangträd'),
+    Object.assign(iconLabel('quest', 'Talangträd', 'h3'), { id: 'pack-talents' }),
     node(
       'p',
       `Specialvapen: ${SPECIALTIES[p.classId].map((k) => WEAPONS[k].name).join(', ')} (10% snabbare omladdning). Rustningsgräns: ${armorLimit(p)}. Välj stöd ELLER anfall; grenen låses. Z använder grenens specialförmåga. X använder klassens taktiska förmåga; den kan kombineras med båda grenarna. Taktik har 28 s återhämtning.`,
@@ -153,6 +152,7 @@ export function marketPanel(root, p, action) {
             () => action({ type: 'sell', category, key }),
           ),
         );
+      row.prepend(icon(key));
       section.append(row);
     }
     root.append(section);

@@ -1,6 +1,7 @@
+import { roadWidth } from '../shared/roads.js';
 import { inParking } from '../shared/sites.js';
 import * as THREE from 'three';
-import { MAP, groundHeight, canStand, waterAt, segmentDistance } from '../shared/map.js';
+import { MAP, groundHeight, canStand, waterAt, segmentDistance, roadsNear } from '../shared/map.js';
 import { STORY_SITES, campaignTarget } from '../shared/story.js';
 
 const rng = (initial) => {
@@ -62,9 +63,9 @@ export function foliageMaterial(kind) {
 export function tintTerrain(geometry) {
   const points = geometry.attributes.position,
     colors = [];
-  const soil = new THREE.Color('#b2a68c'),
-    moss = new THREE.Color('#859d70'),
-    chalk = new THREE.Color('#c4bfa6');
+  const soil = new THREE.Color('#eeecd9'),
+    moss = new THREE.Color('#dce5cf'),
+    chalk = new THREE.Color('#ede9dc');
   for (let i = 0; i < points.count; i++) {
     const x = points.getX(i),
       z = points.getZ(i);
@@ -73,7 +74,7 @@ export function tintTerrain(geometry) {
     const c = soil
       .clone()
       .lerp(moss, n)
-      .lerp(chalk, Math.pow(rock, 12) * 0.4);
+      .lerp(chalk, Math.pow(rock, 12) * 0.1);
     colors.push(c.r, c.g, c.b);
   }
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
@@ -189,21 +190,20 @@ export class Atmosphere {
     const v = this.view,
       random = rng(7801),
       points = [];
-    for (let i = 0; i < 8500; i++) {
+    for (let i = 0; i < 2800; i++) {
       const tree = MAP.trees[i % MAP.trees.length];
-      const place = MAP.places[i % MAP.places.length];
-      const centre = i % 3 === 0 ? place : tree,
-        spread = i % 3 === 0 ? 70 : 24;
+      const centre = tree,
+        spread = 18;
       const x = centre.x + (random() - 0.5) * spread,
         z = centre.z + (random() - 0.5) * spread;
       if (
         !canStand(x, z) ||
         inParking(MAP.parking, x, z, 1) ||
         waterAt(x, z) ||
-        MAP.roads.some((r) => segmentDistance(x, z, ...r.points) < 3.8)
+        roadsNear(x, z).some((r) => segmentDistance(x, z, ...r.points) < roadWidth(r) / 2 + 1.5)
       )
         continue;
-      points.push({ x, z, h: 0.25 + random() * 0.65, yaw: random() * Math.PI });
+      points.push({ x, z, h: 0.1 + random() * 0.24, yaw: random() * Math.PI });
     }
     const mat = foliageMaterial('grass');
     this.sway(mat, 0.12);

@@ -1,4 +1,4 @@
-import { MAP, walkableNear, canStand, clearShot } from './map.js';
+import { MAP, walkableNear, canStand, clearShot, HUB } from './map.js';
 // Street vertex from OSM way/56226492. This is NOT a verified house-number position.
 const temporary = { lat: 60.1426193, lon: 16.1567755 };
 export const ARTIST_LOCATION = {
@@ -12,9 +12,12 @@ const z = -(temporary.lat - 60.148) * 111320 * MAP.scale;
 export const ARTIST = {
   id: 'anders',
   name: 'Anders Delbom – konstnär',
-  ...walkableNear(x + 4, z),
+  ...walkableNear(
+    HUB.stations.find((n) => n.id === 'anders').x,
+    HUB.stations.find((n) => n.id === 'anders').z,
+  ),
   service: 'paint',
-  text: 'Glass eller döskalle? Jag ritar båda. En burk kostar 25 brukskronor och räcker till ett motiv. Min tillfälliga ateljé ligger på Axel Johnsons väg.',
+  text: 'Glass eller döskalle? Jag ritar båda. En burk kostar 25 brukskronor och räcker till ett motiv. Jag har flyttat min fältateljé till Skiftgården, där vakterna håller oss skyddade.',
   label: 'VÄLJ FÄRG',
   classId: 'bruksingenjor',
 };

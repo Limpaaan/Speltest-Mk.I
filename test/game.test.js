@@ -15,7 +15,17 @@ import {
   WEAPONS,
   CLASSES,
 } from '../shared/game.js';
-import { MAP, canStand, waterAt, onBridge, groundHeight, eyeHeight } from '../shared/map.js';
+import {
+  MAP,
+  canStand,
+  waterAt,
+  onBridge,
+  groundHeight,
+  eyeHeight,
+  clearShot,
+  inArena,
+  inSanctuary,
+} from '../shared/map.js';
 function setup(classId = 'stalvakt', pvp = false) {
   const w = createWorld({ pvp, random: () => 0.99 });
   w.enemies = [];
@@ -133,11 +143,18 @@ test('all four classes have functioning distinct abilities', () => {
 test('PvP requires both players opting in AND both standing in arena', () => {
   const { w, p } = setup('stalvakt', true);
   const other = addPlayer(w, 'two', 'Älvvakt', 'alvvakt');
-  p.x = MAP.arena.x + 40;
-  p.z = MAP.arena.z + 40;
-  other.x = p.x;
-  other.z = p.z + 10;
-  p.input = cleanInput({ aim: 0, fire: true });
+  let pair;
+  for (let x = MAP.arena.x - 60; x < MAP.arena.x + 60 && !pair; x += 3)
+    for (let z = MAP.arena.z - 60; z < MAP.arena.z + 60 && !pair; z += 3) {
+      const a = { x, z },
+        b = { x, z: z + 10 };
+      if (canStand(a.x, a.z) && canStand(b.x, b.z) && inArena(a) && inArena(b) && clearShot(a, b))
+        pair = [a, b];
+    }
+  assert.ok(pair, 'two clear, walkable arena positions');
+  Object.assign(p, pair[0]);
+  Object.assign(other, pair[1]);
+  p.input = cleanInput(aimAt(p, other));
   advance(w, 0.1);
   assert.equal(other.hp, maxHp(other));
   act(w, p.id, { type: 'pvp' });
@@ -273,7 +290,8 @@ test('rally point prevents incoming damage and firing until player leaves', () =
   assert.equal(p.hp, maxHp(p));
   assert.equal(p.ammo, 24);
   assert.equal(e.hp, 70);
-  p.z += 25;
+  p.z += 45;
+  assert.equal(inSanctuary(p), false);
   advance(w, 2);
   assert.ok(p.ammo < 24);
 });

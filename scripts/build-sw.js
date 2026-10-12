@@ -12,6 +12,8 @@ async function files(dir) {
 }
 await copyFile('data/avesta-osm.json', 'dist/map-source.json');
 await copyFile('shared/geography.json', 'dist/map-database.json');
+await copyFile('data/avesta-buildings-osm.json', 'dist/city-source.json');
+await copyFile('shared/city.json', 'dist/city-database.json');
 const paths = (await files('dist')).sort(),
   hash = createHash('sha256');
 for (const p of paths) hash.update(await readFile(p));

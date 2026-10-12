@@ -1,0 +1,448 @@
+.item-icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  color: #d9bd83;
+  vertical-align: middle;
+  margin-right: 9px;
+}
+.item-icon svg {
+  width: 100%;
+  height: 100%;
+}
+.wallet {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 15px 0;
+}
+.wallet-card {
+  display: flex;
+  align-items: center;
+  background: #0b1b18;
+  border: 1px solid #506458;
+  padding: 12px 9px;
+  border-radius: 5px;
+  gap: 2px;
+}
+.wallet-card small {
+  display: block;
+  color: #b8c5ba;
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+.wallet-card strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  color: #f4d9a6;
+}
+.wallet-card .item-icon {
+  width: 25px;
+  height: 25px;
+  flex-basis: 25px;
+}
+#hud-wallet {
+  position: absolute;
+  right: 30px;
+  top: 80px;
+  grid-template-columns: repeat(2, 1fr);
+  width: 230px;
+  margin: 0;
+}
+#hud-wallet .wallet-card {
+  padding: 8px;
+  background: #0a1916df;
+}
+#hud-wallet strong {
+  font-size: 17px;
+}
+#weapon-icon {
+  position: absolute;
+  right: 100%;
+  top: 12px;
+  padding-right: 10px;
+}
+#weapon-icon .item-icon {
+  width: 58px;
+  height: 42px;
+}
+#grenade-count {
+  display: block;
+  color: #c9d7c6;
+  font-size: 11px;
+  margin: 8px 0;
+}
+.ammo {
+  font-variant-numeric: tabular-nums;
+}
+#inventory-dialog,
+#camp-dialog {
+  max-width: 1020px;
+  width: calc(100% - 48px);
+  border-radius: 7px;
+}
+.dialog-nav {
+  position: sticky;
+  top: -1px;
+  background: #14241ff5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px 0;
+  z-index: 2;
+  border-top: 1px solid #486355;
+  border-bottom: 1px solid #486355;
+  margin: 10px 0 20px;
+}
+.dialog-nav button {
+  border: 1px solid #59735e;
+  background: #22372d;
+  color: #efe8cf;
+  padding: 9px 13px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+.dialog-nav button:hover {
+  background: #3b5140;
+}
+.material-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  scroll-margin-top: 70px;
+  margin: 12px 0 24px;
+}
+.material-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 7px;
+  padding: 13px 9px;
+  border: 1px solid #4b6857;
+  background: #20352b;
+  border-radius: 5px;
+}
+.material-card > span {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+}
+.material-card strong {
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+}
+.material-card.empty {
+  background: #12211c;
+  border-color: #34483c;
+  color: #98a89a;
+}
+.material-card.empty .item-icon {
+  color: #889789;
+}
+.inventory-item {
+  background: #0d1e19;
+  border: 1px solid #405546;
+  margin: 9px 0;
+  padding: 14px;
+  border-radius: 5px;
+}
+.inventory-item h3 {
+  font-size: 16px;
+}
+.inventory-item p {
+  line-height: 1.65;
+  font-size: 12px;
+}
+.inventory-item > .item-icon {
+  width: 58px;
+  height: 45px;
+  flex-basis: 58px;
+}
+.inventory-item button {
+  min-width: 85px;
+  font-size: 10px;
+}
+#equipment-panel > h3 {
+  border-top: 1px solid #4b6152;
+  padding-top: 24px;
+  margin-top: 24px;
+  scroll-margin-top: 65px;
+}
+#equipment-panel > button,
+#artist-panel > button {
+  display: inline-flex;
+  align-items: center;
+  margin: 4px;
+  padding: 10px 13px;
+  font-size: 11px;
+}
+.equipment-row {
+  gap: 10px;
+}
+.equipment-row p {
+  line-height: 1.65;
+}
+.equipment-row > .item-icon {
+  margin-top: 14px;
+}
+.camp-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.quest-card,
+.service-card {
+  padding: 20px;
+  background: #0c1c18;
+  border: 1px solid #496353;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  scroll-margin-top: 65px;
+}
+.quest-card {
+  border-top: 3px solid #d9ba72;
+}
+.quest-card h3 {
+  font-size: 25px;
+  line-height: 1.2;
+  margin: 15px 0;
+}
+.quest-card p,
+.service-card p {
+  font-size: 13px;
+  line-height: 1.75;
+}
+.mission-target {
+  font-size: 14px;
+  padding: 12px;
+  background: #2b3d2b;
+  color: #ffe0a0;
+  border-left: 3px solid #d9ba72;
+  line-height: 1.6;
+}
+.reward-line {
+  display: flex;
+  gap: 15px;
+  color: #efcf8e;
+}
+.reward-line > span {
+  display: flex;
+  align-items: center;
+}
+.reward-line .item-icon {
+  width: 22px;
+  height: 22px;
+  flex-basis: 22px;
+}
+.quest-card > .primary {
+  width: 100%;
+  margin-top: 14px;
+}
+.workshop-recipes {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+.workshop-recipes button {
+  font-size: 11px;
+  text-align: left;
+  line-height: 1.6;
+  padding: 12px !important;
+  letter-spacing: 0.2px;
+}
+.workshop-recipes .item-icon {
+  display: block;
+  margin-bottom: 7px;
+}
+.voice-transcript {
+  background: #172c24;
+  border: 1px solid #6f8c76;
+  padding: 16px;
+  border-radius: 5px;
+  margin: 15px 0;
+  color: #d3ddcb;
+  font-size: 14px;
+}
+.voice-transcript > strong {
+  font-size: 11px;
+  color: #efce8e;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.transcript-text {
+  font-size: 14px !important;
+  line-height: 1.9 !important;
+  margin: 10px 0 0;
+  white-space: pre-wrap;
+}
+.transcript-text .reading {
+  color: #122218;
+  background: #f4d28b;
+  border-radius: 2px;
+  box-shadow: 0 0 0 3px #f4d28b;
+}
+.transcript-text .read {
+  color: #fff0cc;
+}
+.voice-transcript[data-state='stopped'] .read {
+  color: inherit;
+}
+.voice-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.station-directory {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.station-card {
+  padding: 15px;
+  border: 1px solid #516c59;
+  border-radius: 5px;
+  background: #182d23;
+}
+.station-card h4 {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-size: 14px;
+  color: #ede6cb;
+}
+.station-card p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #b5c6b7;
+}
+.station-card button {
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.5;
+}
+.npc-service-card {
+  border-left: 3px solid #cbb176;
+  padding: 13px;
+  background: #243b2e;
+}
+.npc-service-card > strong {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+#npc-service-status {
+  padding: 10px;
+  border: 1px solid #496552;
+  color: #dbcca1;
+  font-variant-numeric: tabular-nums;
+}
+.side-goals {
+  margin: 12px 0;
+  color: #b5c3b1;
+  font-size: 11px;
+}
+.campaign-hud {
+  border-top: 1px solid #607548;
+  padding-top: 12px;
+}
+.campaign-hud strong {
+  font-size: 15px;
+  color: #ffe0a0;
+}
+.campaign-hud p {
+  line-height: 1.65;
+  font-size: 12px;
+}
+#guide-hint {
+  color: #93d6bf;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.quests {
+  max-width: 320px;
+  background: #0c1c17df;
+}
+.quests h2 {
+  font-size: 18px;
+}
+#journal-button {
+  width: 100%;
+  margin-top: 5px;
+}
+@media (max-width: 900px) {
+  .camp-grid {
+    grid-template-columns: 1fr;
+  }
+  .material-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .station-directory {
+    grid-template-columns: 1fr;
+  }
+  .wallet {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  #hud-wallet {
+    width: 195px;
+    right: 15px;
+    top: 70px;
+  }
+  .wallet-card small {
+    font-size: 9px;
+  }
+  .quests {
+    max-width: 260px;
+  }
+  .inventory-item {
+    flex-wrap: wrap;
+  }
+  .inventory-item .item-description {
+    min-width: 150px;
+  }
+  #inventory-dialog,
+  #camp-dialog {
+    width: calc(100% - 20px);
+    padding: 18px;
+  }
+  .dialog-nav {
+    gap: 5px;
+  }
+  .dialog-nav button {
+    padding: 8px;
+    font-size: 11px;
+  }
+}
+@media (max-width: 600px) {
+  .material-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  #hud-wallet {
+    top: 65px;
+    width: 158px;
+    gap: 4px;
+  }
+  #hud-wallet .item-icon {
+    width: 19px;
+    height: 19px;
+    flex-basis: 19px;
+    margin-right: 5px;
+  }
+  .quests {
+    margin-top: 12px;
+    max-width: 185px;
+    padding: 10px;
+  }
+  .quests h2 {
+    display: none;
+  }
+  .campaign-hud strong {
+    font-size: 12px;
+  }
+  .campaign-hud p {
+    font-size: 10px;
+  }
+  #weapon-icon {
+    display: none;
+  }
+}

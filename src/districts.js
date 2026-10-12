@@ -88,7 +88,7 @@ export function districtBuilding(v, p) {
       v.box(p.x - p.w * 0.3 + i * p.w * 0.3, 1.7, p.z + p.d / 2 + 0.1, 3, 3.4, 0.1, s.zinc);
   if (p.name)
     v.sign(
-      '~ ' + p.name,
+      (p.verified ? '' : '~ ') + p.name,
       p.x,
       retail ? p.h - 0.9 : 2.8,
       p.z + p.d / 2 + 0.2,

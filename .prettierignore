@@ -9,3 +9,6 @@ shared/geography.json
 
 shared/terrain.json
 data/terrain-source-crop.json
+
+data/avesta-buildings-osm.json
+shared/city.json
