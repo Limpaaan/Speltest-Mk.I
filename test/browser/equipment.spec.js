@@ -93,7 +93,7 @@ test('trade, craft, mount and class talent choices survive an offline restart', 
   await page.locator('#player-name').fill('Vapensmeden');
   await page.locator('#play-offline').click();
   await page.keyboard.press('i');
-  await expect(page.locator('#inventory-stats')).toContainText('492 brukskronor');
+  await expect(page.locator('#inventory-wallet [data-resource=credits] strong')).toHaveText('492');
   await expect(
     panel.getByRole('button', { name: 'Optik: Kikarsikte 4× · DEMONTERA' }),
   ).toBeVisible();

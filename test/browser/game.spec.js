@@ -16,18 +16,20 @@ test('FPS mouse capture, look, sprint, crouch, ADS shooting, inventory and pause
   await page.locator('#play-offline').click();
   await capture(page);
   await expect(page.locator('#player-class')).toHaveText('KOPPARSLAGARE');
+  await page.keyboard.press('c');
+  await expect(page.locator('#stance')).toHaveText('HUKANDE');
+  await page.keyboard.press('c');
+  // Leave along the clear northern approach before mouse movement changes the heading.
+  // Pointer-lock movement deltas differ between platforms and can otherwise aim at cover.
+  await page.keyboard.down('Shift');
+  await page.keyboard.down('w');
+  await expect(page.locator('#zone')).not.toContainText('SKYDDAD', { timeout: 20000 });
+  await page.keyboard.up('w');
+  await page.keyboard.up('Shift');
   const heading = await page.locator('#compass').textContent();
   await page.mouse.move(800, 480);
   await page.mouse.move(820, 480);
   await expect(page.locator('#compass')).not.toHaveText(heading);
-  await page.keyboard.press('c');
-  await expect(page.locator('#stance')).toHaveText('HUKANDE');
-  await page.keyboard.press('c');
-  await page.keyboard.down('Shift');
-  await page.keyboard.down('s');
-  await expect(page.locator('#zone')).not.toContainText('SKYDDAD', { timeout: 20000 });
-  await page.keyboard.up('s');
-  await page.keyboard.up('Shift');
   await page.keyboard.press('q');
   await expect(page.locator('#ability-cooldown')).not.toHaveText('REDO');
   await page.mouse.down({ button: 'right' });
