@@ -22,7 +22,8 @@ test('GPU preference persists; recorded dialogue decodes, replays offline and ob
   await page.locator('#settings-menu').click();
   await page.locator('#setting-gpuPerformance').check();
   await expect(page.locator('#settings-gpu-restart')).toBeVisible();
-  await page.locator('#settings-gpu-restart').click();
+  // Arm the reload wait before clicking: static edition text can belong to the old document.
+  await Promise.all([page.waitForEvent('load'), page.locator('#settings-gpu-restart').click()]);
   await expect(page.locator('.edition')).toContainText('0.9');
   await expect
     .poll(() => page.evaluate(() => window.webglPreferences))

@@ -101,6 +101,7 @@ test('two browser clients join the same room and see the shared player count', a
     }
     await expect(a.locator('#session')).toContainText('2 AV 8');
     await expect(b.locator('#session')).toContainText('2 AV 8');
+    await a.bringToFront();
     await a.keyboard.press('F2');
     await expect(a.locator('#admin-dialog')).toBeVisible();
     await a.locator('#admin-target').selectOption({ label: 'Andre' });
@@ -108,8 +109,12 @@ test('two browser clients join the same room and see the shared player count', a
     await a.locator('#admin-credits').fill('100');
     await a.locator('#admin-stats-form button').click();
     await expect(a.locator('#admin-status')).toContainText('uppdaterats');
+    // A real user switches to the recipient window before reading its rendered HUD.
+    await b.bringToFront();
     await expect(b.locator('#level')).toHaveText('NIVÅ 5');
+    await a.bringToFront();
     await expect(a.locator('#level')).toHaveText('NIVÅ 1');
+    await b.bringToFront();
     await capture(b);
     await b.keyboard.press('e');
     await b.locator('#camp-market').getByText('Råmaterial', { exact: true }).click();
