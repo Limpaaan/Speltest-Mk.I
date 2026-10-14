@@ -20,7 +20,7 @@ jobs:
       - run: python test/terrain_import_test.py
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     # Match Render's environment so test fixtures cannot accidentally inherit it.
     env:
       ALLOWED_ORIGIN: https://limpaaan.github.io

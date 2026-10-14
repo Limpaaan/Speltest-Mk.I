@@ -7,9 +7,10 @@ permissions:
   contents: read
 concurrency:
   group: github-pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build:
+    timeout-minutes: 25
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
