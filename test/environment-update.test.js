@@ -4,6 +4,7 @@ import { daylight, DAY_SECONDS } from '../shared/daylight.js';
 import { fitRoads, crossing, roadWidth } from '../shared/roads.js';
 import { MAP, canStand, groundHeight, raycastWorld } from '../shared/map.js';
 import { terrainHeight } from '../shared/terrain.js';
+import { industrialVolumes } from '../shared/industry.js';
 import { createWorld, addPlayer, tick, snapshot } from '../shared/game.js';
 
 test('day cycle wraps continuously, starts in daylight, and gives three times as much day as night', () => {
@@ -70,7 +71,10 @@ test('a street crossing a building detours along connected outside segments; ter
 });
 test('no rendered road width runs through a landmark or generated building footprint', () => {
   for (const road of MAP.roads)
-    for (const p of [...MAP.places, ...MAP.buildings])
+    for (const p of [
+      ...MAP.places.flatMap((p) => (p.industry ? industrialVolumes(p) : [p])),
+      ...MAP.buildings,
+    ])
       if (p.w && p.d)
         assert.equal(
           crossing(...road.points, p, roadWidth(road) / 2),
@@ -112,8 +116,12 @@ test('parked, overturned and burning police cars remain solid cover and leave tr
     assert.equal(hit.kind, 'police');
   }
 });
-test('four priority districts retain their provenance and distinctive architecture', () => {
-  assert.equal(MAP.districts.length, 4);
+test('priority districts retain their provenance and distinctive architecture', () => {
+  assert.ok(
+    ['koppardalen', 'gamla-byn', 'holmen', 'asbo-handel', 'kallhagen', 'avesta-works-area'].every(
+      (id) => MAP.districts.some((p) => p.id === id),
+    ),
+  );
   const rusta = MAP.places.find((p) => p.id === 'rusta'),
     willys = MAP.places.find((p) => p.id === 'willys');
   assert.ok(rusta.x < willys.x && rusta.w < willys.w);
@@ -125,7 +133,7 @@ test('four priority districts retain their provenance and distinctive architectu
   for (const item of p) {
     if (item.sourceId) {
       assert.equal(item.verified, true);
-      assert.equal(item.architecture, 'OSM-position-interpreted-elevation');
+      assert.equal(item.architecture, 'OSM-footprint-interpreted-elevation');
     } else {
       assert.equal(item.verified, false);
       assert.equal(item.architecture, 'user-map-approximation');

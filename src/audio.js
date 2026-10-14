@@ -1,6 +1,7 @@
 import { VOICE_PROFILES, ENEMY_LINES, speechLine } from '../shared/speech.js';
 import { roadsNear, segmentDistance, inSanctuary } from '../shared/map.js';
 import { CONTRACTS, campaignStatus } from '../shared/progression.js';
+import { NordicSoundscape } from './soundscape.js';
 export const GUN_SOUNDS = {
   rifle: { duration: 0.48, bass: 85, body: 0.18, noise: 0.075, metal: 2300 },
   shotgun: { duration: 0.68, bass: 48, body: 0.32, noise: 0.13, metal: 1250 },
@@ -76,18 +77,17 @@ export class GameAudio {
           buffer.copyToChannel(wave, 0);
           this.buffers.set(kind, buffer);
         }
-        const noise = c.createBuffer(1, c.sampleRate * 2, c.sampleRate),
-          data = noise.getChannelData(0);
-        let smooth = 0;
-        for (let i = 0; i < data.length; i++) {
-          smooth += (Math.random() * 2 - 1 - smooth) * 0.018;
-          data[i] = smooth * 0.15;
-        }
-        this.wind = c.createBufferSource();
-        this.wind.buffer = noise;
-        this.wind.loop = true;
-        this.wind.connect(this.ambient);
-        this.wind.start();
+        this.soundscape = new NordicSoundscape(c, this.ambient);
+        this.echo = c.createDelay(0.8);
+        this.echo.delayTime.value = 0.24;
+        const echoFilter = c.createBiquadFilter(),
+          echoGain = c.createGain();
+        echoFilter.type = 'lowpass';
+        echoFilter.frequency.value = 1350;
+        echoGain.gain.value = 0.14;
+        this.echo.connect(echoFilter);
+        echoFilter.connect(echoGain);
+        echoGain.connect(this.effects);
       }
       await this.context.resume();
       this.enabled = this.context.state === 'running';
@@ -183,6 +183,7 @@ export class GameAudio {
     }
     gain.gain.value = level / (1 + (distance / 18) ** 1.6);
     source.connect(gain);
+    if (this.echo && [...this.buffers.values()].includes(buffer)) gain.connect(this.echo);
     let panner;
     if (c.createStereoPanner) {
       const p = c.createStereoPanner();
@@ -286,6 +287,16 @@ export class GameAudio {
     const p = state.players[myId];
     if (!this.enabled || !p) return;
     this.listener = p;
+    this.soundscape.update(p, state.dayTime ?? state.time, {
+      active,
+      paused,
+      voicePlaying: this.voicePlaying,
+    });
+    this.ambient.gain.setTargetAtTime(
+      (this.settings?.ambientVolume ?? 0.3) * (this.voicePlaying ? 0.55 : 1),
+      this.context.currentTime,
+      0.1,
+    );
     if (state.time < this.lastTime) {
       this.reset();
     }

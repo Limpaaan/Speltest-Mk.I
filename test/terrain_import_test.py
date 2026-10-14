@@ -64,6 +64,15 @@ class TerrainImportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing"):
             IMPORTER.make_candidate(self.path, self.geography)
 
+    def test_metre_scale_preserves_the_geographic_crop_and_original_altitudes(self):
+        self.write_raster()
+        compressed = IMPORTER.make_candidate(self.path, self.geography)
+        physical = IMPORTER.make_candidate(self.path, {**self.geography, "scale": 1})
+        self.assertEqual(physical["extent"], 2400)
+        self.assertEqual(physical["step"], 40)
+        self.assertEqual(physical["verticalScale"], 1)
+        self.assertEqual(physical["elevationsMetres"], compressed["elevationsMetres"])
+
     def test_invalid_source_preserves_existing_candidate(self):
         self.write_raster(missing=True)
         output = Path(self.temporary.name) / "candidate.json"

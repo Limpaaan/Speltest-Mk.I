@@ -2,15 +2,15 @@
 // Two existing OSM anchors (Verket and Dalahästen) register this local plan.
 // These are approximate centres and original schematic models, NOT surveyed footprints.
 const pin = (x, z) => ({
-  x: -86.94 + (x - 494) * (397.05 / 1199),
-  z: -25.44 + (z - 467) * (100.81 / 287),
+  x: 4 * (-86.94 + (x - 494) * (397.05 / 1199)),
+  z: 4 * (-25.44 + (z - 467) * (100.81 / 287)),
 });
 const place = (id, name, px, pz, w, d, h, type, district) => ({
   id,
   name,
   ...pin(px, pz),
-  w,
-  d,
+  w: w * 4,
+  d: d * 4,
   h,
   type,
   district,
@@ -23,28 +23,28 @@ export const DISTRICTS = [
     id: 'koppardalen',
     name: 'Koppardalen',
     ...pin(800, 555),
-    radius: 160,
+    radius: 640,
     description: 'Slaggsten, tegel, verkstäder och kraftstationer längs älven.',
   },
   {
     id: 'gamla-byn',
     name: 'Gamla Byn',
     ...pin(270, 438),
-    radius: 45,
+    radius: 180,
     description: 'Röda timmerhus, smala gränder och trädgårdar vid kyrkan.',
   },
   {
     id: 'holmen',
     name: 'Holmen',
     ...pin(105, 457),
-    radius: 35,
+    radius: 140,
     description: 'Grön strandmiljö med stigar och utsikt mot Gamla Byn.',
   },
   {
     id: 'asbo-handel',
     name: 'Åsbo handelsområde',
     ...pin(1715, 295),
-    radius: 88,
+    radius: 352,
     description: 'Dalahästen, stora butikshallar, parkeringar och snabbmat.',
   },
 ];
@@ -89,12 +89,12 @@ export const DISTRICT_BUILDINGS = [
   // User clarification: the smaller left hall is Rusta; Willys occupies the right hall.
   {
     ...place('rusta', 'Rusta', 1543, 201, 8, 13, 5.5, 'retail', 'asbo-handel'),
-    x: pin(1543, 201).x - 9.5,
+    x: pin(1543, 201).x - 38,
     gabled: true,
   },
   {
     ...place('willys', 'Willys', 1543, 201, 19, 15, 6, 'retail', 'asbo-handel'),
-    x: pin(1543, 201).x + 4,
+    x: pin(1543, 201).x + 16,
     gabled: true,
   },
   place('oob', 'ÖoB', 1498, 263, 17, 19, 6, 'retail', 'asbo-handel'),

@@ -4,7 +4,7 @@
 
 En spelbar, svenskspråkig **3D RPG-lootershooterprototyp** i ett postapokalyptiskt Avesta. Stadens försvarare möter det fiktiva danska **Järnsundskompaniet**, en militär invasionsfraktion. Berättelsen handlar om hembygd, gemenskap och motstånd. Fraktionen representerar inte danskar som folk.
 
-Version **0.8** har lugnare mark, utjämnade terränghöjder och mjukare kamerarörelse. Över 2 600 hus bygger på daterade OpenStreetMap-fotavtryck; åtta nya landmärken binder samman kvarteren. Fem bevakade områden ersätter fiender utspridda över hela kartan. Sex mer detaljerade vapen har egna ljud. Uppdrag, NPC-hälsningar och danska fienderepliker använder 41 medföljande ljudfiler med olika röstprofiler. GPU-prestandaläge kan väljas i inställningarna. Se [versionens utförande och datakällor](docs/RELEASE-0.8.md).
+Version **0.9** ger staden verklig meterskala, terränganpassade markstöd, kartlagda järnvägar och fler detaljer i Prästjorden, Källhagen, H Östberg AB, Avesta Works och Linde Gas. Över 3 400 hus bygger på daterade OpenStreetMap-fotavtryck. Avstånd och kvarterskaraktär har kontrollerats med Google Maps och Street View. Svensk skogsmark, högre träd, svalare ljus, väderdis och en regional ljudbild utvecklar miljökänslan med Generation Zero som referens. Versionen behåller de sex detaljerade vapnen, 41 ljudfiler, tydliga utrustningsikoner, bevakad NPC-samlingsplats och valbart GPU-prestandaläge. Se [versionens utförande och datakällor](docs/RELEASE-0.9.md).
 
 Spela på **https://limpaaan.github.io/Speltest-Mk.I/**. Ingen installation behövs för spelaren.
 
@@ -60,7 +60,7 @@ Vites utvecklingsserver använder port **5173** och skickar `/ws` vidare till sp
 - Personligt loot, 16 packningsplatser, utrustning, skrotning, läkning med skrot, nivåer upp till 30 och två talangspår.
 - Tre grunduppdrag: besegra fem soldater, bärga tre fynd och besegra en boss.
 - Bossarna **Slaggjarlen** vid Verket och **Ryttmästare Mörk** vid Dalahästen har olika silhuetter och förvarnade attacker: cirkulär slaggpuls respektive riktad eldkon och garanterat legendariskt loot. Vanliga fiender återkommer efter 35 sekunder, bossar efter 120 sekunder.
-- Namngivna miljöer: Aalto-huset, Plushuset, Verket, Koppardalen, Dalälven med broar, Dalahästen, Prästjorden, Åsbo och Skogsbo. Vägsträckningar, registrerade vägbroar och älvförlopp bygger på en OSM-export daterad 2026-10-06. Skalan är komprimerad 1:4; byggnader och vattenbredder är förenklade. `~` markerar ungefärliga platser och nytillkomna tolkningar från referenskartan.
+- Namngivna miljöer: Aalto-huset, Plushuset, Verket, Koppardalen, Dalälven med broar, Dalahästen, Prästjorden, Åsbo och Skogsbo. Vägsträckningar, registrerade vägbroar och älvförlopp bygger på en OSM-export daterad 2026-10-06. Den horisontella skalan är 1:1 med verkliga meter; byggnader och vattenbredder är fortfarande förenklade. `~` markerar ungefärliga platser och nytillkomna tolkningar från referenskartan.
 
 ### Kontroller
 

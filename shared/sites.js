@@ -1,5 +1,6 @@
 import { crossing } from './roads.js';
-import { buildingWorld } from './buildings.js';
+import { buildingWorld, buildingBounds } from './buildings.js';
+import { aaltoWorld } from './interiors.js';
 
 export const inParking = (lots, x, z, margin = 0) =>
   lots.some((p) => Math.abs(x - p.x) < p.w / 2 + margin && Math.abs(z - p.z) < p.d / 2 + margin);
@@ -20,9 +21,16 @@ const projection = (point, r) => {
 export function accessRoute(start, targets, buildings, waterAt, width = 1.4) {
   const radius = 105,
     margin = width / 2 + 0.85;
-  const near = buildings.filter(
-    (p) => p.w && p.d && Math.hypot(p.x - start[0], p.z - start[1]) < radius,
-  );
+  const near = buildings.filter((p) => {
+    if (!p.w || !p.d) return false;
+    const b = buildingBounds(p, margin);
+    return (
+      Math.hypot(
+        Math.max(0, Math.abs(b.x - start[0]) - b.w / 2),
+        Math.max(0, Math.abs(b.z - start[1]) - b.d / 2),
+      ) < radius
+    );
+  });
   const ends = targets.filter((p) => Math.hypot(p[0] - start[0], p[1] - start[1]) < radius);
   if (!ends.length) return null;
   const nodes = [
@@ -113,7 +121,7 @@ export function planSites(buildings, roads, waterAt, requested = buildings) {
   for (const p of requested.filter((p) => p.w && p.d && p.type !== 'horse')) {
     // Existing Aalto has a real playable east doorway and a six-metre ramp.
     const entry = buildingWorld(p, 0, p.d / 2 + 1.6);
-    const door = p.id === 'aalto' ? [p.x + 18, p.z + 3.5] : [entry.x, entry.z];
+    const door = p.id === 'aalto' ? Object.values(aaltoWorld(18, 3.5)) : [entry.x, entry.z];
     const path = accessRoute(door, nearest(door), buildings, waterAt);
     if (append(path, p)) entrances.push({ buildingId: p.id, point: door, path });
     if (p.type !== 'retail' && p.type !== 'mall') continue;

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { buildingWorld } from '../shared/buildings.js';
 import {
   createWorld,
   addPlayer,
@@ -59,7 +60,8 @@ test('movement is finite, normalized and limited by server time', () => {
   assert.equal(cleanInput({ fire: 1 }).fire, false);
 });
 test('buildings and real river geometry block walking while a mapped bridge is traversable', () => {
-  assert.equal(canStand(MAP.places[0].x, MAP.places[0].z - 7), false);
+  const wall = buildingWorld(MAP.places[0], 0, -MAP.places[0].d / 2);
+  assert.equal(canStand(wall.x, wall.z), false);
   const river = MAP.rivers.find((r) => {
     const x = (r.points[0][0] + r.points[1][0]) / 2,
       z = (r.points[0][1] + r.points[1][1]) / 2;
@@ -173,11 +175,11 @@ test('PvP requires both players opting in AND both standing in arena', () => {
 test('building geometry prevents shooting through walls', () => {
   const { w, p } = setup();
   const a = MAP.places.find((p) => p.id === 'aalto');
-  p.x = a.x;
-  p.z = a.z - 25;
-  const e = spawnEnemy(w, a.x, a.z + 25);
+  Object.assign(p, buildingWorld(a, 0, -a.d / 2 - 2));
+  const other = buildingWorld(a, 0, a.d / 2 + 2);
+  const e = spawnEnemy(w, other.x, other.z);
   e.cooldown = 999;
-  p.input = cleanInput({ aim: 0, fire: true });
+  p.input = cleanInput(aimAt(p, e));
   advance(w, 0.1);
   assert.equal(e.hp, e.maxHp);
 });

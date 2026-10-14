@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { aaltoWorld, INTERIOR_CACHES } from '../../shared/interiors.js';
 async function capture(page) {
   if (!(await page.evaluate(() => Boolean(document.pointerLockElement))))
     await page.locator('#capture-mouse').click();
@@ -130,9 +131,6 @@ test('a multiplayer player walks through Aalto entrance and retrieves the archiv
   await capture(page);
   const pos = () => page.evaluate(() => window.observedState?.players[window.observedPlayerId]);
   await expect.poll(async () => Boolean(await pos())).toBe(true);
-  const start = await pos(),
-    cx = start.x - 22,
-    cz = start.z - 10;
   async function walk(axis, target) {
     const p = await pos(),
       direction = target > p[axis] ? 1 : -1,
@@ -148,11 +146,13 @@ test('a multiplayer player walks through Aalto entrance and retrieves the archiv
     );
     await page.keyboard.up(key);
   }
-  await walk('z', cz + 3.5);
-  await walk('x', cx + 4);
-  await walk('z', cz + 1);
-  await walk('x', cx - 9);
-  await walk('z', cz - 3.5);
+  // Follow the enlarged, rotated entrance and the opening in the interior partition.
+  for (const q of [aaltoWorld(14, 3.5), aaltoWorld(4, 3.5), aaltoWorld(4, 1), aaltoWorld(-9, 1)]) {
+    await walk('z', q.z);
+    await walk('x', q.x);
+  }
+  const archive = INTERIOR_CACHES.find((c) => c.id === 'aalto-archive');
+  await walk('z', archive.z + 0.5);
   await expect(page.locator('#interact')).toContainText('Arkivskåp');
   await page.screenshot({ path: '.local/aalto-interior.png' });
   await page.keyboard.press('e');

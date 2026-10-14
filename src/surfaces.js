@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { groundDetail } from './nordic-environment.js';
 export function spruceMaterial() {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -150,6 +151,7 @@ export function surfaces() {
   groundMap.anisotropy = 8;
   groundMap.minFilter = THREE.LinearMipmapLinearFilter;
   const soil = new THREE.MeshStandardMaterial({ map: groundMap, color: '#ffffff', roughness: 1 });
+  groundDetail(soil);
   return {
     slagStone: make('#59574b', 'slag'),
     archBrick: make('#8a7057', 'brick'),

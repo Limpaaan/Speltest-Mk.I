@@ -15,7 +15,15 @@ import {
 } from '../shared/game.js';
 import { rollDrop, CACHES, nearbyCache } from '../shared/economy.js';
 import { ATTACHMENTS, compatible, validMods } from '../shared/items.js';
-import { AALTO, AALTO_FLOOR, INTERIOR_CACHES } from '../shared/interiors.js';
+import {
+  AALTO,
+  AALTO_FLOOR,
+  AALTO_SCALE,
+  INTERIOR_CACHES,
+  aaltoWorld,
+  aaltoLocal,
+} from '../shared/interiors.js';
+import { buildingWorld } from '../shared/buildings.js';
 import { canStand, clearShot, groundHeight, MAP, eyeHeight } from '../shared/map.js';
 import { CAMP } from '../shared/progression.js';
 import { canEquip } from '../shared/talents.js';
@@ -252,22 +260,18 @@ test('support and assault specials work for all six classes, including cooperati
     }
 });
 test('Aalto entrance and interior are walkable, solid walls and upper floor stop shots', () => {
-  assert.equal(canStand(AALTO.x + 12, AALTO.z + 3.5), true);
-  assert.equal(canStand(AALTO.x + 12, AALTO.z - 3), false);
+  const doorway = aaltoWorld(12, 3.5),
+    wall = aaltoWorld(12, -3);
+  assert.equal(canStand(doorway.x, doorway.z), true);
+  assert.equal(canStand(wall.x, wall.z), false);
   const { w, p } = setup();
-  Object.assign(p, { x: AALTO.x + 18, z: AALTO.z + 3.5 });
-  p.input = cleanInput({ x: -1 });
-  advance(w, 8);
-  assert.ok(p.x < AALTO.x + 10);
+  Object.assign(p, aaltoWorld(18, 3.5));
+  p.input = cleanInput({ x: -Math.cos(AALTO.yaw || 0), z: Math.sin(AALTO.yaw || 0) });
+  advance(w, 8 * AALTO_SCALE.x);
+  assert.ok(aaltoLocal(p.x, p.z).x < 10);
   assert.equal(groundHeight(p.x, p.z), AALTO_FLOOR);
-  assert.equal(
-    clearShot({ x: AALTO.x + 14, z: AALTO.z + 3.5 }, { x: AALTO.x + 8, z: AALTO.z + 3.5 }),
-    true,
-  );
-  assert.equal(
-    clearShot({ x: AALTO.x + 14, z: AALTO.z - 3 }, { x: AALTO.x + 8, z: AALTO.z - 3 }),
-    false,
-  );
+  assert.equal(clearShot(aaltoWorld(14, 3.5), aaltoWorld(8, 3.5)), true);
+  assert.equal(clearShot(aaltoWorld(14, -3), aaltoWorld(8, -3)), false);
   for (const c of CACHES) assert.ok(canStand(c.x, c.z), c.id);
 });
 test('archive caches require proximity and sight, are personal, persist, and reward the quest only once', () => {
@@ -343,8 +347,9 @@ test('AdminL can grant bounded resources and credits; other players cannot forge
 test('a suppressor avoids alerting an unseen guard outside its reduced sound radius', () => {
   for (const suppressed of [false, true]) {
     const { w, p } = setup();
-    Object.assign(p, { x: AALTO.x, z: AALTO.z - 20 });
-    const e = spawnEnemy(w, AALTO.x, AALTO.z + 20);
+    Object.assign(p, buildingWorld(AALTO, 0, -AALTO.d / 2 - 5));
+    const guard = buildingWorld(AALTO, 0, AALTO.d / 2 + 5),
+      e = spawnEnemy(w, guard.x, guard.z);
     assert.equal(clearShot(p, e), false);
     if (suppressed) p.weapon.mods = { muzzle: 'suppressor' };
     p.input = cleanInput({ fire: true, pitch: 1.4 });
@@ -407,7 +412,9 @@ test('spraying consumes owned paint, uses server position, observes cooldown and
 test('spray art cannot be placed through walls or used while dead', () => {
   const { w, p } = setup();
   p.paint.red = 2;
-  Object.assign(p, { x: AALTO.x + 13, z: AALTO.z - 3, aim: -Math.PI / 2 });
+  Object.assign(p, buildingWorld(AALTO, AALTO.w / 2 + 1, -3 * AALTO_SCALE.z), {
+    aim: (AALTO.yaw || 0) - Math.PI / 2,
+  });
   send(w, p, { type: 'spray' });
   assert.equal(p.paint.red, 2);
   assert.equal(p.paintings.length, 0);

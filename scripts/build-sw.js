@@ -14,6 +14,12 @@ await copyFile('data/avesta-osm.json', 'dist/map-source.json');
 await copyFile('shared/geography.json', 'dist/map-database.json');
 await copyFile('data/avesta-buildings-osm.json', 'dist/city-source.json');
 await copyFile('shared/city.json', 'dist/city-database.json');
+await copyFile('data/avesta-transport-osm.json', 'dist/transport-source.json');
+await copyFile('shared/transport.json', 'dist/transport-database.json');
+await copyFile('shared/industry.json', 'dist/industry-database.json');
+await copyFile('data/avesta-industrial-osm.json', 'dist/industry-area-source.json');
+await copyFile('data/avesta-forest-osm.json', 'dist/forest-source.json');
+await copyFile('shared/forest.json', 'dist/forest-database.json');
 const paths = (await files('dist')).sort(),
   hash = createHash('sha256');
 for (const p of paths) hash.update(await readFile(p));

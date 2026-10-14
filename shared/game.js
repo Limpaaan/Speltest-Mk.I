@@ -14,6 +14,7 @@ import { newEconomy, economyAction, rollDrop, collect, restoreEconomy, CACHES } 
 import { SPECIALTIES, canEquip, armorLimit, talentAction, restoreTalents } from './talents.js';
 import { ENEMY_TYPES } from './enemies.js';
 import { ENCOUNTER_ZONES, encounterSpawns } from './encounters.js';
+import { buildingWorld } from './buildings.js';
 import { WEAPONS } from './weapons.js';
 export { WEAPONS } from './weapons.js';
 import {
@@ -192,7 +193,8 @@ export function createWorld({ pvp = false, random = Math.random } = {}) {
     ['horse', 'Ryttmästare Mörk', 'Dalahästens ockupant'],
   ]) {
     const landmark = MAP.places.find((p) => p.id === id);
-    const pos = walkableNear(landmark.x + 35, landmark.z + 35);
+    const outside = buildingWorld(landmark, landmark.w / 2 + 25, landmark.d / 2 + 25);
+    const pos = walkableNear(outside.x, outside.z);
     spawnEnemy(w, pos.x, pos.z, 'boss', name, title).landmark = id;
   }
   return w;

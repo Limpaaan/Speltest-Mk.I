@@ -39,8 +39,10 @@ test('map import rejects empty data and ignores geometry outside Avesta', () => 
 test('shipped map has sourced landmarks and valid player and enemy spawns', () => {
   assert.ok(MAP.places.filter((p) => p.verified).length >= 6);
   const aalto = MAP.places.find((p) => p.id === 'aalto');
-  assert.equal(aalto.lat, 60.1446593);
-  assert.equal(aalto.lon, 16.1770483);
+  assert.equal(aalto.lat, 60.144722);
+  assert.equal(aalto.lon, 16.1771145);
+  assert.equal(MAP.scale, 1);
+  assert.equal(MAP.extent, 2280);
   assert.equal(aalto.sourceId, 'way/132486267');
   assert.ok(MAP.roads.length > 1000);
   assert.ok(MAP.rivers.length > 50);

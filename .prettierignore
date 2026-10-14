@@ -12,3 +12,9 @@ data/terrain-source-crop.json
 
 data/avesta-buildings-osm.json
 shared/city.json
+data/avesta-transport-osm.json
+shared/transport.json
+data/avesta-industrial-osm.json
+shared/industry.json
+data/avesta-forest-osm.json
+shared/forest.json

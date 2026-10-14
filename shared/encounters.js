@@ -1,7 +1,13 @@
 import { MAP, canStand, inSanctuary } from './map.js';
+import { buildingWorld } from './buildings.js';
 const zone = (id, name, landmark, dx, dz, radius, count) => {
   const p = MAP.places.find((p) => p.id === landmark);
-  return { id, name, landmark, x: p.x + dx, z: p.z + dz, radius, count };
+  const q = buildingWorld(
+    p,
+    Math.sign(dx) * (p.w / 2 + Math.abs(dx)),
+    Math.sign(dz) * (p.d / 2 + Math.abs(dz)),
+  );
+  return { id, name, landmark, ...q, radius, count };
 };
 export const ENCOUNTER_ZONES = [
   zone('verket-yard', 'Verkets bevakade gård', 'verket', 34, 30, 45, 8),

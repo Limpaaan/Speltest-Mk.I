@@ -1,5 +1,6 @@
 import { ARTIST } from './artist.js';
 import { MAP, walkableNear, HUB } from './map.js';
+import { buildingLocal } from './buildings.js';
 
 export const CAMP = { x: MAP.spawn.x + 4, z: MAP.spawn.z - 2, name: 'Maja – skiftledare' };
 import { CONTRACTS, STORY_SITES } from './story.js';
@@ -69,7 +70,14 @@ export function trackCampaign(p, event, enemy) {
   if (!c?.active || !contract) return;
   if (event === 'visit' && contract.place) {
     const place = MAP.places.find((p) => p.id === contract.place);
-    if (Math.hypot(p.x - place.x, p.z - place.z) <= 24) c.visited = true;
+    const q = buildingLocal(place, p.x, p.z);
+    if (
+      Math.hypot(
+        Math.max(0, Math.abs(q.x) - place.w / 2),
+        Math.max(0, Math.abs(q.z) - place.d / 2),
+      ) <= 24
+    )
+      c.visited = true;
   }
   if (event === 'kill') {
     if (enemy.type !== 'boss') c.kills = Math.min(999, c.kills + 1);

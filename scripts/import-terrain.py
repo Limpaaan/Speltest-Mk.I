@@ -33,8 +33,8 @@ def make_candidate(path, geography, source_url=SOURCE):
     scale = float(geography["scale"])
     if not (0 < scale <= 1 and 60 < origin["lat"] < 61 and 16 < origin["lon"] < 17):
         raise ValueError("Expected the Avesta origin and a valid geographic scale")
-    extent, step, base = 600, 10, 80
-    count = extent * 2 // step + 1
+    extent, step, base = 2400 * scale, 40 * scale, 80
+    count = 121
     lon_scale = 111320 * math.cos(math.radians(origin["lat"])) * scale
     lat_scale = 111320 * scale
     with rasterio.open(path) as dataset:

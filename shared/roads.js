@@ -1,5 +1,5 @@
 import { buildingLocal, buildingWorld } from './buildings.js';
-export const roadWidth = (r) => (r.bridge ? 10 : r.width || (r.name ? 5.6 : 3.1));
+export const roadWidth = (r) => r.width || (r.bridge ? 10 : r.name ? 5.6 : 3.1);
 // Slab clipping of the centreline against a rectangle enlarged by the road shoulder.
 export function crossing(a, b, p, margin = 0) {
   if (p.yaw) {

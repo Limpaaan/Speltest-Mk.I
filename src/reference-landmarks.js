@@ -55,7 +55,6 @@ export function referenceLandmark(v, p) {
     const yellow = s.civic || (s.civic = s.ivory.clone());
     yellow.color.set('#d2b469');
     box(0, a.body / 2, 0, p.w, a.body, p.d, yellow);
-    box(0, 0.16, 0, p.w + 0.12, 0.32, p.d + 0.12, s.concrete);
     roof(0, 0, p.w + 0.22, p.d + 0.22, a.body, a.roofRise, s.roof, true);
     for (const side of [-1, 1]) {
       const z = side * (p.d / 2 + 0.03);

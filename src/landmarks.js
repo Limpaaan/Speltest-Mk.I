@@ -1,8 +1,15 @@
-import { AALTO_WALLS, AALTO_FURNITURE, AALTO_FLOOR, aaltoRamp } from '../shared/interiors.js';
+import {
+  AALTO_WALLS,
+  AALTO_FURNITURE,
+  AALTO_FLOOR,
+  aaltoRamp,
+  aaltoWorld,
+} from '../shared/interiors.js';
+import { buildingWorld } from '../shared/buildings.js';
 import * as THREE from 'three';
 
 // Original geometry interpreted from the owner's reference photos, 2026-10-08.
-// Coordinates fit the existing gameplay envelopes; dimensions/orientation are not surveyed.
+// Prototype coordinates are transformed horizontally to the sourced footprint by WorldView.
 function builder(view, p) {
   const box = (x, y, z, w, h, d, mat, yaw = 0) => view.box(p.x + x, y, p.z + z, w, h, d, mat, yaw);
   const mesh = (geo, mat, x, y, z, yaw = 0) => {
@@ -152,61 +159,72 @@ export function buildAalto(view, p) {
   box(-7, 11.3, 0, 10, 16, 13, s.aaltoBlue);
   box(0, -0.12, 0, 24, 0.24, 14, s.concrete);
   const rampGeo = new THREE.BufferGeometry();
-  const corners = [
-    [12, 1.5],
-    [18, 1.5],
-    [18, 5.5],
-    [12, 5.5],
-  ].map(([x, z]) => [x, (aaltoRamp(p.x + x, p.z + z) ?? AALTO_FLOOR) - AALTO_FLOOR + 0.01, z]);
-  rampGeo.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(
-      [0, 2, 1, 0, 3, 2].flatMap((i) => corners[i]),
-      3,
-    ),
-  );
-  rampGeo.setAttribute(
-    'uv',
-    new THREE.Float32BufferAttribute([0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1], 2),
-  );
+  const rampVertices = [],
+    rampUvs = [];
+  for (let x = 12; x < 18; x += 0.5)
+    for (let z = 1.5; z < 5.5; z += 0.5) {
+      const corners = [
+        [x, z],
+        [x + 0.5, z],
+        [x + 0.5, z + 0.5],
+        [x, z + 0.5],
+      ];
+      for (const i of [0, 2, 1, 0, 3, 2]) {
+        const [px, pz] = corners[i],
+          q = aaltoWorld(px, pz);
+        rampVertices.push(px, (aaltoRamp(q.x, q.z) ?? AALTO_FLOOR) - AALTO_FLOOR + 0.01, pz);
+        rampUvs.push((px - 12) / 6, (pz - 1.5) / 4);
+      }
+    }
+  rampGeo.setAttribute('position', new THREE.Float32BufferAttribute(rampVertices, 3));
+  rampGeo.setAttribute('uv', new THREE.Float32BufferAttribute(rampUvs, 2));
   rampGeo.computeVertexNormals();
   mesh(rampGeo, s.ivory, 0, 0, 0);
   view.sign('ENTRÉ / ARKIV', p.x + 12.2, 2.8, p.z + 3.5, 3, Math.PI / 2);
 
   box(0, 3.25, 0, 24, 0.1, 14, s.ivory);
-  for (const wall of AALTO_WALLS)
-    box(wall.x - p.x, 1.65, wall.z - p.z, wall.w, 3.3, wall.d, s.ivory);
+  for (const wall of AALTO_WALLS) {
+    const prototype = wall.prototype;
+    box(prototype.x, 1.65, prototype.z, prototype.w, 3.3, prototype.d, s.ivory);
+  }
+  // Furniture uses room-scaled positions and ordinary metre-sized geometry. Its
+  // world transform must bypass the horizontal building transform exactly once.
+  const siteRotation = view.siteRotation;
+  view.siteRotation = null;
   for (const f of AALTO_FURNITURE) {
-    const x = f.x - p.x,
-      z = f.z - p.z;
+    const furnitureBox = (x, y, z, w, h, d, mat) => {
+      const q = buildingWorld(f, x, z);
+      view.box(q.x, y, q.z, w, h, d, mat, f.yaw);
+    };
     if (f.type === 'desk') {
-      box(x, 0.96, z, f.w, 0.08, f.d, s.wood);
+      furnitureBox(0, 0.96, 0, f.w, 0.08, f.d, s.wood);
       for (const side of [-1, 1])
-        box(x + side * (f.w / 2 - 0.1), 0.48, z, 0.12, 0.96, f.d - 0.12, s.metal);
-      box(x - 0.8, 1.03, z, 0.45, 0.06, 0.4, s.ivory);
-      box(x + 0.7, 1.16, z, 0.3, 0.3, 0.3, s.metal);
+        furnitureBox(side * (f.w / 2 - 0.1), 0.48, 0, 0.12, 0.96, f.d - 0.12, s.metal);
+      furnitureBox(-0.8, 1.03, 0, 0.45, 0.06, 0.4, s.ivory);
+      furnitureBox(0.7, 1.16, 0, 0.3, 0.3, 0.3, s.metal);
     } else if (f.type === 'shelf') {
-      box(x, 1.3, z, f.w, 2.6, f.d, s.wood);
+      furnitureBox(0, 1.3, 0, f.w, 2.6, f.d, s.wood);
       const sideways = f.w < f.d;
       for (let y = 0.35; y < 2.6; y += 0.55)
         for (let u = -1.4; u < 1.5; u += 0.25)
-          box(
-            x + (sideways ? 0.38 : u),
+          furnitureBox(
+            sideways ? 0.38 : u,
             y,
-            z + (sideways ? u : -0.38),
+            sideways ? u : -0.38,
             sideways ? 0.08 : 0.17,
             0.4,
             sideways ? 0.17 : 0.08,
             Math.round(u * 4) % 2 ? s.aaltoBlue : s.ivory,
           );
     } else {
-      box(x, 1.1, z, f.w, 2.2, f.d, s.metal);
+      furnitureBox(0, 1.1, 0, f.w, 2.2, f.d, s.metal);
       for (let y = 0.3; y < 2.2; y += 0.5) {
-        box(x, y, z + 0.38, f.w - 0.12, 0.4, 0.04, s.zinc);
-        box(x, y, z + 0.42, 0.25, 0.035, 0.04, s.metal);
+        furnitureBox(0, y, 0.38, f.w - 0.12, 0.4, 0.04, s.zinc);
+        furnitureBox(0, y, 0.42, 0.25, 0.035, 0.04, s.metal);
       }
     }
   }
+  view.siteRotation = siteRotation;
   for (const x of [-8, 5]) box(x, 3.16, 0, 1.5, 0.06, 0.35, s.windowLight);
   for (const side of [-1, 1]) box(0, 0.12, side * 6.8, 23.5, 0.24, 0.1, s.aaltoBlue);
   box(7, 1.9, -6.8, 2.6, 1.4, 0.1, s.wood);

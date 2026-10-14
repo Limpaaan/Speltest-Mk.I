@@ -1,5 +1,6 @@
 import { MAP, walkableNear, clearShot } from './map.js';
-import { AALTO } from './interiors.js';
+import { AALTO, AALTO_SCALE } from './interiors.js';
+import { buildingWorld } from './buildings.js';
 
 export const PROLOGUE =
   'När elen dog hördes fortfarande skiftvisslan över Avesta. Sedan kom Järnsundskompaniet, en dansk legostyrka som lovade värme i utbyte mot lydnad. De tog ställverken, broarna och radion. Tre veckor senare återvänder du hem. Vid samlingsplatsen håller skiftledaren Maja en lista över dem som saknas. Ditt namn står där, ännu inte överstruket.';
@@ -7,11 +8,16 @@ export const EPILOGUE =
   'Först tänds en lampa i sjukstugan. Sedan svarar Skogsbo på radion. Maja viker ihop listan över saknade; arbetet med att hitta dem börjar i morgon. Avesta är fortfarande sargat och kompaniets patruller finns kvar, men värmen och rösterna tillhör åter dem som bor här. Du vann inget rike. Du gav din hemstad en morgondag. Det sista skiftet blev det första.';
 const outside = (id, name, seconds) => {
   const p = MAP.places.find((p) => p.id === id);
-  return { name, seconds, ...walkableNear(p.x + p.w / 2 + 4, p.z + p.d / 2 + 4) };
+  const q = buildingWorld(p, p.w / 2 + 4, p.d / 2 + 4);
+  return { name, seconds, ...walkableNear(q.x, q.z) };
 };
 const bridge = MAP.bridges.find((b) => b.name === 'Skogsbobron');
 export const STORY_SITES = {
-  archive: { name: 'Arkivets driftjournal', seconds: 3, x: AALTO.x - 7, z: AALTO.z - 4 },
+  archive: {
+    name: 'Arkivets driftjournal',
+    seconds: 3,
+    ...buildingWorld(AALTO, -7 * AALTO_SCALE.x, -AALTO.d / 2 + 1.5),
+  },
   radio: outside('skogsbo', 'Skogsbos reservradio', 6),
   clinic: outside('prast', 'Sjukstugans reservaggregat', 6),
   bridge: { name: 'Brofästets sambandslåda', seconds: 8, ...walkableNear(...bridge.points[0]) },

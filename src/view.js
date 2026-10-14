@@ -3,6 +3,10 @@ import { buildVegetation } from './vegetation.js';
 import { buildHub } from './hub.js';
 import { referenceLandmark } from './reference-landmarks.js';
 import { buildCity, cityLandmark } from './city.js';
+import { buildLandmarkFoundations } from './foundations.js';
+import { buildRailways } from './railways.js';
+import { industrialLandmark, buildIndustryEntrance } from './industry.js';
+import { buildRoadDetails, WoodlandMist } from './nordic-environment.js';
 import { CameraTrack } from './camera-track.js';
 import { DayNight } from './daylight.js';
 import { buildVehicles } from './vehicles.js';
@@ -43,13 +47,13 @@ export class WorldView {
     );
     this.renderer.setPixelRatio(this.softwareRenderer ? 0.65 : Math.min(devicePixelRatio, 1.5));
     this.renderer.shadowMap.enabled = !this.softwareRenderer;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.08;
     this.renderer.autoClear = false;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#b2b2a0');
-    this.scene.fog = new THREE.FogExp2('#b2b2a0', 0.0021);
+    this.scene.fog = new THREE.FogExp2('#b2b2a0', 0.0009);
     this.camera = new THREE.PerspectiveCamera(78, 1, 0.04, 1300);
     this.camera.rotation.order = 'YXZ';
     this.hemisphere = new THREE.HemisphereLight('#a6bccb', '#4d4737', 1.45);
@@ -89,6 +93,7 @@ export class WorldView {
     this.flush();
     this.buildWeapon();
     this.dayNight = new DayNight(this);
+    this.mist = new WoodlandMist(this);
     this.vehicles = buildVehicles(this);
     this.lamp = new THREE.SpotLight('#fff1cf', 35, 45, 0.35, 0.5, 1);
     this.scene.add(this.lamp, this.lamp.target);
@@ -234,7 +239,12 @@ export class WorldView {
   }
   buildMap() {
     const s = this.s;
-    const ground = new THREE.PlaneGeometry(1200, 1200, terrain.width - 1, terrain.height - 1);
+    const ground = new THREE.PlaneGeometry(
+      terrain.extent * 2,
+      terrain.extent * 2,
+      terrain.width - 1,
+      terrain.height - 1,
+    );
     ground.rotateX(-Math.PI / 2);
     const points = ground.attributes.position;
     for (let i = 0; i < points.count; i++)
@@ -243,7 +253,8 @@ export class WorldView {
     tintTerrain(ground);
     s.soil.vertexColors = true;
     const uv = ground.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 120, uv.getY(i) * 120);
+    for (let i = 0; i < uv.count; i++)
+      uv.setXY(i, (uv.getX(i) * terrain.extent) / 5, (uv.getY(i) * terrain.extent) / 5);
     this.static(ground, s.soil, 0, 0, 0);
     ground.dispose();
     const strip = (segments, mat, offset, width) => {
@@ -304,14 +315,15 @@ export class WorldView {
       // Dense masked tiles avoid giant flat triangles covering river valleys.
       const xs = water.points.map((p) => p[0]),
         zs = water.points.map((p) => p[1]);
-      const minX = Math.max(-600, Math.floor(Math.min(...xs) / 5) * 5),
-        maxX = Math.min(600, Math.max(...xs));
-      const minZ = Math.max(-600, Math.floor(Math.min(...zs) / 5) * 5),
-        maxZ = Math.min(600, Math.max(...zs));
+      const tile = 10;
+      const minX = Math.max(-terrain.extent, Math.floor(Math.min(...xs) / tile) * tile),
+        maxX = Math.min(terrain.extent, Math.max(...xs));
+      const minZ = Math.max(-terrain.extent, Math.floor(Math.min(...zs) / tile) * tile),
+        maxZ = Math.min(terrain.extent, Math.max(...zs));
       const vertices = [];
-      for (let x = minX; x < maxX; x += 5)
-        for (let z = minZ; z < maxZ; z += 5) {
-          if (!waterAt(x + 2.5, z + 2.5)) continue;
+      for (let x = minX; x < maxX; x += tile)
+        for (let z = minZ; z < maxZ; z += tile) {
+          if (!waterAt(x + tile / 2, z + tile / 2)) continue;
           for (const [dx, dz] of [
             [0, 0],
             [0, 5],
@@ -320,7 +332,11 @@ export class WorldView {
             [0, 5],
             [5, 5],
           ])
-            vertices.push(x + dx, terrainHeight(x + dx, z + dz) + 0.08, z + dz);
+            vertices.push(
+              x + (dx * tile) / 5,
+              terrainHeight(x + (dx * tile) / 5, z + (dz * tile) / 5) + 0.08,
+              z + (dz * tile) / 5,
+            );
         }
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
@@ -335,15 +351,21 @@ export class WorldView {
       this.static(geo, s.water, 0, 0, 0);
       geo.dispose();
     }
-    strip(MAP.bridges, s.concrete, 0.08, 10);
+    strip(MAP.bridges, s.concrete, 0.08);
     for (const bridge of MAP.bridges) {
       const [a, b] = bridge.points,
         length = Math.hypot(b[0] - a[0], b[1] - a[1]),
         yaw = Math.atan2(b[0] - a[0], b[1] - a[1]);
       for (const side of [-1, 1])
         for (let i = 0; i < length; i += 2) {
-          const x = a[0] + ((b[0] - a[0]) * i) / length + Math.cos(yaw) * side * 4.6,
-            z = a[1] + ((b[1] - a[1]) * i) / length - Math.sin(yaw) * side * 4.6;
+          const x =
+              a[0] +
+              ((b[0] - a[0]) * i) / length +
+              Math.cos(yaw) * side * (roadWidth(bridge) / 2 - 0.2),
+            z =
+              a[1] +
+              ((b[1] - a[1]) * i) / length -
+              Math.sin(yaw) * side * (roadWidth(bridge) / 2 - 0.2);
           this.box(x, groundHeight(x, z) + 0.6, z, 0.07, 1.2, 0.07, s.metal);
           this.box(
             x,
@@ -360,18 +382,26 @@ export class WorldView {
     for (const p of MAP.places) {
       this.baseY = groundHeight(p.x, p.z);
       this.siteYaw = p.yaw || 0;
-      this.siteRotation = p.yaw
-        ? new THREE.Matrix4()
-            .makeTranslation(p.x, 0, p.z)
-            .multiply(new THREE.Matrix4().makeRotationY(p.yaw))
-            .multiply(new THREE.Matrix4().makeTranslation(-p.x, 0, -p.z))
-        : null;
+      const sx = p.id === 'aalto' ? p.w / 24 : p.id === 'verket' ? p.w / 38 : 1,
+        sz = p.id === 'aalto' ? p.d / 14 : p.id === 'verket' ? p.d / 24 : 1;
+      this.siteRotation =
+        p.yaw || sx !== 1 || sz !== 1
+          ? new THREE.Matrix4()
+              .makeTranslation(p.x, 0, p.z)
+              .multiply(new THREE.Matrix4().makeRotationY(p.yaw || 0))
+              .multiply(new THREE.Matrix4().makeScale(sx, 1, sz))
+              .multiply(new THREE.Matrix4().makeTranslation(-p.x, 0, -p.z))
+          : null;
       if (p.type === 'horse') this.horse(p);
       else if (p.w && p.d) this.building(p);
     }
     this.siteRotation = null;
-    this.city = buildCity(this);
     this.baseY = 0;
+    buildRoadDetails(this);
+    buildIndustryEntrance(this);
+    buildLandmarkFoundations(this);
+    this.railways = buildRailways(this, { railways: MAP.railways, heightAt: groundHeight });
+    this.city = buildCity(this);
     for (const p of MAP.cover.filter((p) => p.type !== 'police')) {
       if (p.hub) continue;
       this.baseY = groundHeight(p.x, p.z);
@@ -443,6 +473,7 @@ export class WorldView {
     );
   }
   building(p) {
+    if (industrialLandmark(this, p)) return;
     if (referenceLandmark(this, p)) return;
     if (['townhall', 'museum', 'watertower', 'hospital', 'sports', 'station'].includes(p.type))
       return cityLandmark(this, p);
@@ -461,7 +492,6 @@ export class WorldView {
               : s.plaster,
       h = works ? p.h - 6 : p.h;
     this.box(p.x, h / 2, p.z, p.w, h, p.d, mat);
-    this.box(p.x, -1, p.z, p.w + 0.7, 3, p.d + 0.7, s.concrete);
     this.box(p.x, h + 0.12, p.z, p.w + 0.5, 0.24, p.d + 0.5, s.roof);
     for (let side = 0; side < 4; side++) {
       const yaw = (side * Math.PI) / 2,
@@ -538,7 +568,7 @@ export class WorldView {
     buildHorse(this, p);
   }
   vegetation() {
-    buildVegetation(this);
+    this.forest = buildVegetation(this);
   }
   buildCamp() {
     const { x, z } = CAMP;
@@ -894,19 +924,41 @@ export class WorldView {
       this.sun.target.position.set(player.x, base, player.z);
     } else {
       document.getElementById('scope-overlay')?.classList.remove('visible');
-      this.camera.position.set(23 + Math.sin(time * 0.04) * 3, groundHeight(23, 117) + 2, 117);
-      this.camera.lookAt(-5, groundHeight(-5, 85) + 5, 85);
+      this.camera.position.set(
+        MAP.spawn.x + 14 + Math.sin(time * 0.04) * 3,
+        groundHeight(MAP.spawn.x + 14, MAP.spawn.z + 18) + 2,
+        MAP.spawn.z + 18,
+      );
+      const aalto = MAP.places.find((p) => p.id === 'aalto');
+      this.camera.lookAt(aalto.x, groundHeight(aalto.x, aalto.z) + 7, aalto.z);
       this.camera.fov = 62;
       this.sun.position.set(-110, 80, 180);
       this.sun.target.position.set(0, 0, 95);
     }
     this.atmosphere.update(time, player);
+    this.forest.update(
+      this.camera.position,
+      this.settings?.graphics || 'medium',
+      this.softwareRenderer,
+    );
     this.city.update(
       this.camera.position,
       this.settings?.graphics || 'medium',
       this.softwareRenderer,
     );
+    this.railways.update(
+      this.camera.position,
+      this.settings?.graphics || 'medium',
+      this.softwareRenderer,
+    );
     this.dayNight.update(state.dayTime ?? state.time ?? 0);
+    this.mist.update(
+      time,
+      this.dayNight.state,
+      this.camera.position,
+      this.settings?.graphics || 'medium',
+      this.softwareRenderer,
+    );
     this.vehicles.update(
       time,
       this.camera.position,
@@ -1025,18 +1077,38 @@ function mapBackground(size, expanded) {
     ctx.lineTo(pos(r.points[1][0]), pos(r.points[1][1]));
     ctx.stroke();
   }
+  for (const track of MAP.railways) {
+    ctx.strokeStyle = track.railway === 'disused' ? '#8b7866' : '#c1b4a4';
+    ctx.lineWidth = expanded ? 1.4 : 0.8;
+    ctx.setLineDash([3, 2]);
+    ctx.beginPath();
+    track.points.forEach(([x, z], i) =>
+      i ? ctx.lineTo(pos(x), pos(z)) : ctx.moveTo(pos(x), pos(z)),
+    );
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
   ctx.strokeStyle = '#d3a45b77';
   ctx.beginPath();
   ctx.arc(pos(MAP.arena.x), pos(MAP.arena.z), MAP.arena.radius * scale, 0, Math.PI * 2);
   ctx.stroke();
   ctx.fillStyle = '#5e6753';
-  for (const b of MAP.buildings)
-    ctx.fillRect(
-      pos(b.x) - (b.w * scale) / 2,
-      pos(b.z) - (b.d * scale) / 2,
-      b.w * scale,
-      b.d * scale,
-    );
+  for (const b of [...MAP.buildings, ...MAP.places.filter((p) => p.w && p.d)]) {
+    if (b.footprint) {
+      ctx.beginPath();
+      b.footprint.forEach(([x, z], i) =>
+        i ? ctx.lineTo(pos(x), pos(z)) : ctx.moveTo(pos(x), pos(z)),
+      );
+      ctx.closePath();
+      ctx.fill();
+    } else
+      ctx.fillRect(
+        pos(b.x) - (b.w * scale) / 2,
+        pos(b.z) - (b.d * scale) / 2,
+        b.w * scale,
+        b.d * scale,
+      );
+  }
   ctx.fillStyle = '#90c8b1';
   for (const n of [CAMP, ...NPCS]) ctx.fillRect(pos(n.x) - 2, pos(n.z) - 2, 4, 4);
   ctx.font = `${expanded ? 10 : 8}px Arial`;
@@ -1046,6 +1118,7 @@ function mapBackground(size, expanded) {
     ctx.fillText('SKIFTGÅRDEN · NPC & TJÄNSTER', pos(HUB.center.x), pos(HUB.center.z) - 12);
   }
   for (const p of MAP.places) {
+    if (p.id.startsWith('avesta-works-')) continue;
     ctx.fillStyle = '#c5b887';
     ctx.fillRect(pos(p.x) - 3, pos(p.z) - 3, 6, 6);
     ctx.fillStyle = '#d8d9bd';

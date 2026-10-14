@@ -30,8 +30,7 @@ function setup(classId = 'stalvakt', pvp = false) {
   const w = createWorld({ pvp, random: () => 0.5 });
   w.enemies = [];
   const p = addPlayer(w, 'a', 'Dalmas', classId);
-  p.x = -480;
-  p.z = 480;
+  Object.assign(p, walkableNear((-480 * MAP.scale) / 0.25, (480 * MAP.scale) / 0.25));
   return { w, p };
 }
 test('shipped Copernicus grid retains crop provenance and uses the same triangles as the ground mesh', () => {
@@ -55,11 +54,15 @@ test('shipped Copernicus grid retains crop provenance and uses the same triangle
         : at(1, 1) * (fx + fz - 1) + at(0, 1) * (1 - fx) + at(1, 0) * (1 - fz);
     assert.ok(
       Math.abs(
-        terrainHeight(-600 + (col + fx) * 10, -600 + (row + fz) * 10) - (metres - 80) * 0.25,
+        terrainHeight(
+          -terrain.extent + (col + fx) * terrain.step,
+          -terrain.extent + (row + fz) * terrain.step,
+        ) -
+          (metres - terrain.baseAltitudeMetres) * terrain.verticalScale,
       ) < 1e-8,
     );
   }
-  const point = walkableNear(-480, 480),
+  const point = walkableNear((-480 * MAP.scale) / 0.25, (480 * MAP.scale) / 0.25),
     y = groundHeight(point.x, point.z);
   const hit = raycastWorld({ ...point, y: y + 10 }, { x: 0, y: -1, z: 0 }, 20);
   assert.equal(hit.kind, 'ground');
@@ -68,7 +71,10 @@ test('shipped Copernicus grid retains crop provenance and uses the same triangle
 test('infill, tree trunks and rocks are solid while roads and NPC destinations remain reachable', () => {
   assert.ok(MAP.buildings.length > 2000);
   assert.ok(MAP.buildings.every((p) => p.mapped && p.sourceId && p.footprint.length >= 4));
-  assert.equal(MAP.trees.length, 950);
+  assert.ok(MAP.trees.length >= 3800 && MAP.trees.length <= 17800);
+  assert.ok(MAP.trees.filter((p) => p.forestSourced).length > 5000);
+  assert.ok(MAP.trees.some((p) => Math.abs(p.x) > MAP.extent * 0.75));
+  assert.ok(MAP.trees.some((p) => Math.abs(p.z) > MAP.extent * 0.75));
   for (const list of [MAP.buildings, MAP.trees, MAP.rocks])
     for (const p of list) assert.equal(canStand(p.x, p.z), false);
   for (const p of [MAP.spawn, CAMP, ...NPCS]) assert.ok(canStand(p.x, p.z));
@@ -77,7 +83,8 @@ test('infill, tree trunks and rocks are solid while roads and NPC destinations r
   const hit = raycastWorld({ x: rock.x, y: y + 10, z: rock.z }, { x: 0, y: -1, z: 0 }, 20);
   assert.equal(hit.kind, 'cover');
   assert.ok(hit.y > y + 0.5);
-  assert.ok(travelFactor(-480, 480, 0, 1) < 1);
+  const roughGround = walkableNear((-480 * MAP.scale) / 0.25, (480 * MAP.scale) / 0.25);
+  assert.ok(travelFactor(roughGround.x, roughGround.z, 0, 1) < 1);
 });
 test('semiautomatic pistol requires release; automatic machine gun continues and shotgun traces seven pellets', () => {
   for (const [kind, count] of [
@@ -231,8 +238,8 @@ test('settings survive valid storage and reject malformed or out-of-range saved 
 });
 
 test('a real hillside stops horizontal fire before the nominal weapon range', () => {
-  const x = -520,
-    z = -280,
+  const x = (-520 * MAP.scale) / 0.25,
+    z = (-280 * MAP.scale) / 0.25,
     y = groundHeight(x, z) + 1.65;
   assert.ok(canStand(x, z));
   const hit = raycastWorld({ x, y, z }, { x: 0, y: 0, z: 1 }, 100);

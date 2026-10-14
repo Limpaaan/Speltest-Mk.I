@@ -3,6 +3,7 @@ import { inParking } from '../shared/sites.js';
 import * as THREE from 'three';
 import { MAP, groundHeight, canStand, waterAt, segmentDistance, roadsNear } from '../shared/map.js';
 import { STORY_SITES, campaignTarget } from '../shared/story.js';
+import { buildForestFloor } from './nordic-environment.js';
 
 const rng = (initial) => {
   let seed = initial;
@@ -84,6 +85,7 @@ export class Atmosphere {
   constructor(view) {
     this.view = view;
     this.wind = { value: 0 };
+    for (const mat of view.forest.materials) this.sway(mat, 0.055);
     this.marker = new THREE.Mesh(
       new THREE.OctahedronGeometry(0.27),
       new THREE.MeshBasicMaterial({ color: '#ffd889' }),
@@ -187,42 +189,11 @@ export class Atmosphere {
     mat.customProgramCacheKey = () => `avesta-wind-${amount}`;
   }
   groundCover() {
-    const v = this.view,
-      random = rng(7801),
-      points = [];
-    for (let i = 0; i < 2800; i++) {
-      const tree = MAP.trees[i % MAP.trees.length];
-      const centre = tree,
-        spread = 18;
-      const x = centre.x + (random() - 0.5) * spread,
-        z = centre.z + (random() - 0.5) * spread;
-      if (
-        !canStand(x, z) ||
-        inParking(MAP.parking, x, z, 1) ||
-        waterAt(x, z) ||
-        roadsNear(x, z).some((r) => segmentDistance(x, z, ...r.points) < roadWidth(r) / 2 + 1.5)
-      )
-        continue;
-      points.push({ x, z, h: 0.1 + random() * 0.24, yaw: random() * Math.PI });
-    }
-    const mat = foliageMaterial('grass');
-    this.sway(mat, 0.12);
-    this.grass = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), mat, points.length * 2);
-    const dummy = new THREE.Object3D();
-    points.forEach((p, i) => {
-      for (let j = 0; j < 2; j++) {
-        dummy.position.set(p.x, groundHeight(p.x, p.z) + p.h / 2 - 0.02, p.z);
-        dummy.scale.set(p.h * 1.6, p.h, 1);
-        dummy.rotation.set(0, p.yaw + (j * Math.PI) / 2, 0);
-        dummy.updateMatrix();
-        this.grass.setMatrixAt(i * 2 + j, dummy.matrix);
-      }
-    });
-    this.grass.receiveShadow = true;
-    v.scene.add(this.grass);
+    this.floor = buildForestFloor(this.view, this.wind);
   }
   update(time, p) {
     this.wind.value = time;
+    this.floor.update(this.view.camera.position);
     const target = p && campaignTarget(p);
     this.marker.visible = Boolean(target);
     if (target) {
@@ -238,11 +209,7 @@ export class Atmosphere {
     this.view.s.water.normalMap?.offset.set(time * 0.006, time * 0.004);
   }
   quality(level) {
-    this.grass.visible = level !== 'low';
-    this.grass.count =
-      level === 'high'
-        ? this.grass.instanceMatrix.count
-        : Math.floor(this.grass.instanceMatrix.count * 0.55);
+    this.floor.quality(level);
   }
 }
 

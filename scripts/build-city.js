@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 const raw = await readFile('data/avesta-buildings-osm.json');
 const source = JSON.parse(raw);
 const origin = { lat: 60.148, lon: 16.178 },
-  scale = 0.25;
+  scale = 1;
 const project = ({ lat, lon }) => [
   (lon - origin.lon) * 111320 * Math.cos((origin.lat * Math.PI) / 180) * scale,
   -(lat - origin.lat) * 111320 * scale,
@@ -43,7 +43,7 @@ for (const e of source.elements) {
     d = maxV - minV;
   const x = c * u + s * v,
     z = -s * u + c * v;
-  if (Math.abs(x) > 555 || Math.abs(z) > 555 || w * d < 3 || w < 1.3 || d < 1.3) continue;
+  if (Math.abs(x) > 2220 || Math.abs(z) > 2220 || w * d < 12 || w < 2.6 || d < 2.6) continue;
   const tag = e.tags.building;
   const type = ['industrial', 'warehouse', 'retail', 'commercial'].includes(tag)
     ? 'warehouse'
@@ -70,8 +70,8 @@ for (const e of source.elements) {
     yaw: round(yaw),
     h: round(
       type === 'warehouse'
-        ? Math.max(4, Math.min(10, Number(e.tags.height) * 0.55 || 5.5))
-        : 2.4 * levels,
+        ? Math.max(4, Math.min(35, Number.parseFloat(e.tags.height) || 7))
+        : Number.parseFloat(e.tags.height) || 2.8 * levels,
     ),
     type,
     levels,
@@ -106,6 +106,8 @@ const landmarks = definitions.flatMap(([id, name, sourceId, type, h]) => {
     : [];
 });
 const corrections = [
+  ['aalto', 132486267],
+  ['verket', 132486135],
   ['avesta-kyrka', 132486130],
   ['storfors', 103452796],
   ['lillfors', 132486171],

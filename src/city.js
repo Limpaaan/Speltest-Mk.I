@@ -3,6 +3,7 @@ import { MAP, groundHeight } from '../shared/map.js';
 import { buildingWorld } from '../shared/buildings.js';
 export function buildCity(view) {
   const cells = new Map(),
+    supports = new Map(MAP.foundations.filter((f) => f.city).map((f) => [f.parentId, f])),
     dummy = new THREE.Object3D(),
     color = new THREE.Color();
   for (const p of MAP.buildings) {
@@ -45,29 +46,20 @@ export function buildCity(view) {
   };
   for (const buildings of cells.values()) {
     const body = [],
+      foundations = [],
       flat = [],
       pitched = [],
       windows = [];
     for (const p of buildings) {
       const base = groundHeight(p.x, p.z),
-        bottom =
-          Math.min(
-            base,
-            ...[-1, 1].flatMap((sx) =>
-              [-1, 1].map((sz) => {
-                const q = buildingWorld(p, (sx * p.w) / 2, (sz * p.d) / 2);
-                return groundHeight(q.x, q.z);
-              }),
-            ),
-          ) - 0.3,
         tone = palette[Number(p.sourceId.split('/')[1]) % palette.length];
       body.push({
         ...p,
-        y: (base + p.h + bottom) / 2,
-        h: base + p.h - bottom,
-        color: p.type === 'warehouse' ? '#9b9487' : tone,
+        y: base + p.h / 2,
+        color: p.facadeColor || (p.type === 'warehouse' ? '#9b9487' : tone),
       });
-      if (p.type === 'cottage')
+      foundations.push(supports.get(p.id));
+      if (p.type === 'cottage' || p.gabled)
         pitched.push({
           ...p,
           y: base + p.h,
@@ -75,9 +67,22 @@ export function buildCity(view) {
           w: p.d + 0.25,
           d: p.w + 0.25,
           h: 1.6,
-          color: '#8b7768',
+          color: p.district === 'kallhagen' ? '#303b3b' : '#8b7768',
         });
       else flat.push({ ...p, y: base + p.h + 0.1, w: p.w + 0.2, d: p.d + 0.2, h: 0.2 });
+      if (p.whiteBand)
+        for (const side of [-1, 1]) {
+          const q = buildingWorld(p, 0, side * (p.d / 2 + 0.02));
+          body.push({
+            ...q,
+            y: base + 2.9,
+            w: p.w,
+            h: 0.18,
+            d: 0.06,
+            yaw: p.yaw,
+            color: '#e0ddce',
+          });
+        }
       for (const side of [-1, 1])
         for (let y = 1.6; y < p.h - 0.4; y += 2.4)
           for (let x = -p.w / 2 + 0.8; x < p.w / 2 - 0.5; x += 2.1) {
@@ -95,6 +100,7 @@ export function buildCity(view) {
     const group = new THREE.Group(),
       detail = new THREE.Group();
     for (const mesh of [
+      instance(view.boxGeo, view.s.concrete, foundations),
       instance(view.boxGeo, walls, body),
       instance(view.boxGeo, roof, flat),
       instance(gable, roof, pitched),

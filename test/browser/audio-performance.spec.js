@@ -7,6 +7,9 @@ test('GPU preference persists; recorded dialogue decodes, replays offline and ob
   test.setTimeout(150000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => {
+    if (m.type() === 'error' && /WebGLProgram|shader/i.test(m.text())) errors.push(m.text());
+  });
   await page.addInitScript(() => {
     window.webglPreferences = [];
     const original = HTMLCanvasElement.prototype.getContext;
@@ -20,7 +23,7 @@ test('GPU preference persists; recorded dialogue decodes, replays offline and ob
   await page.locator('#setting-gpuPerformance').check();
   await expect(page.locator('#settings-gpu-restart')).toBeVisible();
   await page.locator('#settings-gpu-restart').click();
-  await expect(page.locator('.edition')).toContainText('0.8');
+  await expect(page.locator('.edition')).toContainText('0.9');
   await expect
     .poll(() => page.evaluate(() => window.webglPreferences))
     .toContain('high-performance');

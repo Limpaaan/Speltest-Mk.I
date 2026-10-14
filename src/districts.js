@@ -11,7 +11,6 @@ export function districtBuilding(v, p) {
   const red = s.falu || (s.falu = s.wood.clone());
   red.color.set('#ad5040');
   const mat = historic ? red : church ? s.plaster : retail ? s.ivory : s.brick;
-  v.box(p.x, -0.6, p.z, p.w + 0.45, 1.2, p.d + 0.45, s.slagStone);
   v.box(p.x, p.h / 2, p.z, p.w, p.h, p.d, mat);
   const pitched = historic || church || power || p.type === 'diner' || p.gabled;
   if (pitched) {
