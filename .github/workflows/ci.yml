@@ -34,7 +34,8 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:browser
+      - run: npx playwright test test/browser/equipment.spec.js --grep "walks through Aalto"
+      - run: npx playwright test --grep-invert "walks through Aalto"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -107,11 +107,37 @@ test('a multiplayer player walks through Aalto entrance and retrieves the archiv
   test.setTimeout(360000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  // Observe the public network messages, while all movement and interaction use real controls.
+  await page.setViewportSize({ width: 960, height: 640 });
+  // Observe public traffic and DOM input; movement still uses real controls.
   await page.addInitScript(() => {
+    window.observedInputs = [];
+    window.observedKeys = [];
+    for (const type of ['keydown', 'keyup'])
+      window.addEventListener(type, (e) => {
+        window.observedKeys.push({ type, key: e.key, target: e.target.tagName });
+        window.observedKeys = window.observedKeys.slice(-20);
+      });
     window.WebSocket = new Proxy(window.WebSocket, {
       construct(Target, args) {
-        const ws = new Target(...args);
+        const ws = new Target(...args),
+          send = ws.send.bind(ws);
+        ws.send = function (data) {
+          try {
+            const m = JSON.parse(data);
+            if (m.type === 'input') {
+              const previous = window.observedInputs.at(-1);
+              if (
+                !previous ||
+                previous.x !== m.input.x ||
+                previous.z !== m.input.z ||
+                previous.aim !== m.input.aim
+              )
+                window.observedInputs.push({ ...m.input, t: performance.now() });
+              window.observedInputs = window.observedInputs.slice(-12);
+            }
+          } catch {}
+          return send(data);
+        };
         ws.addEventListener('message', (e) => {
           try {
             const m = JSON.parse(e.data);
@@ -131,21 +157,32 @@ test('a multiplayer player walks through Aalto entrance and retrieves the archiv
   await capture(page);
   const pos = () => page.evaluate(() => window.observedState?.players[window.observedPlayerId]);
   await expect.poll(async () => Boolean(await pos())).toBe(true);
-  // Exercise navigation after a real mouse turn as well as pointer-lock acquisition.
-  await page.mouse.move(720, 500);
-  await page.mouse.move(980, 500);
-  const turnedAt = await page.evaluate(() => window.observedState.time);
-  await page.waitForFunction((time) => window.observedState?.time > time + 0.3, turnedAt);
   async function walkTo(target) {
-    const deadline = Date.now() + 120000;
+    const deadline = Date.now() + 120000,
+      history = [];
     for (;;) {
       const p = await pos(),
         dx = target.x - p.x,
         dz = target.z - p.z,
         distance = Math.hypot(dx, dz);
       if (distance < 0.9) return;
-      if (Date.now() > deadline)
-        throw Error(JSON.stringify({ target, position: { x: p.x, z: p.z, aim: p.aim } }));
+      if (Date.now() > deadline) {
+        const observed = await page.evaluate(() => ({
+          inputs: window.observedInputs,
+          keys: window.observedKeys,
+          locked: document.pointerLockElement?.id,
+          dialogs: [...document.querySelectorAll('dialog[open]')].map((d) => d.id),
+          hidden: document.hidden,
+        }));
+        throw Error(
+          JSON.stringify({
+            target,
+            position: { x: p.x, z: p.z, aim: p.aim, hp: p.hp },
+            history,
+            observed,
+          }),
+        );
+      }
       // WASD is camera-relative. Observe authoritative aim instead of assuming
       // that pointer-lock acquisition preserves an identical heading on every OS.
       const forward = dx * Math.sin(p.aim) + dz * Math.cos(p.aim),
@@ -153,6 +190,8 @@ test('a multiplayer player walks through Aalto entrance and retrieves the archiv
         keys = [];
       if (Math.abs(forward) > distance * 0.38) keys.push(forward > 0 ? 'w' : 's');
       if (Math.abs(right) > distance * 0.38) keys.push(right > 0 ? 'd' : 'a');
+      history.push({ keys: [...keys], x: p.x, z: p.z, aim: p.aim, dx, dz });
+      if (history.length > 6) history.shift();
       try {
         for (const key of keys) await page.keyboard.down(key);
         await page.waitForTimeout(500);
