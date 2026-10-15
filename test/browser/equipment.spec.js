@@ -104,7 +104,7 @@ test('trade, craft, mount and class talent choices survive an offline restart', 
 test('a multiplayer player walks through Aalto entrance and retrieves the archive', async ({
   page,
 }) => {
-  test.setTimeout(240000);
+  test.setTimeout(360000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   // Observe the public network messages, while all movement and interaction use real controls.
@@ -131,20 +131,34 @@ test('a multiplayer player walks through Aalto entrance and retrieves the archiv
   await capture(page);
   const pos = () => page.evaluate(() => window.observedState?.players[window.observedPlayerId]);
   await expect.poll(async () => Boolean(await pos())).toBe(true);
-  async function walk(axis, target) {
-    const deadline = Date.now() + 90000;
-    // Finite real key presses allow corrections after a slow render frame. Holding
-    // until one observed crossing can overshoot the doorway before key-up arrives.
+  // Exercise navigation after a real mouse turn as well as pointer-lock acquisition.
+  await page.mouse.move(720, 500);
+  await page.mouse.move(980, 500);
+  const turnedAt = await page.evaluate(() => window.observedState.time);
+  await page.waitForFunction((time) => window.observedState?.time > time + 0.3, turnedAt);
+  async function walkTo(target) {
+    const deadline = Date.now() + 120000;
     for (;;) {
       const p = await pos(),
-        distance = target - p[axis];
-      if (Math.abs(distance) < 0.9) return;
+        dx = target.x - p.x,
+        dz = target.z - p.z,
+        distance = Math.hypot(dx, dz);
+      if (distance < 0.9) return;
       if (Date.now() > deadline)
-        throw Error(JSON.stringify({ axis, target, position: { x: p.x, z: p.z } }));
-      const key = axis === 'x' ? (distance > 0 ? 'd' : 'a') : distance > 0 ? 's' : 'w';
-      await page.keyboard.press(key, {
-        delay: 600,
-      });
+        throw Error(JSON.stringify({ target, position: { x: p.x, z: p.z, aim: p.aim } }));
+      // WASD is camera-relative. Observe authoritative aim instead of assuming
+      // that pointer-lock acquisition preserves an identical heading on every OS.
+      const forward = dx * Math.sin(p.aim) + dz * Math.cos(p.aim),
+        right = -dx * Math.cos(p.aim) + dz * Math.sin(p.aim),
+        keys = [];
+      if (Math.abs(forward) > distance * 0.38) keys.push(forward > 0 ? 'w' : 's');
+      if (Math.abs(right) > distance * 0.38) keys.push(right > 0 ? 'd' : 'a');
+      try {
+        for (const key of keys) await page.keyboard.down(key);
+        await page.waitForTimeout(500);
+      } finally {
+        for (const key of keys) await page.keyboard.up(key);
+      }
       const releasedAt = await page.evaluate(() => window.observedState.time);
       await page.waitForFunction((time) => window.observedState?.time > time + 0.4, releasedAt, {
         timeout: 10000,
@@ -152,13 +166,10 @@ test('a multiplayer player walks through Aalto entrance and retrieves the archiv
       });
     }
   }
-  // Follow the enlarged, rotated entrance and the opening in the interior partition.
-  for (const q of [aaltoWorld(14, 3.5), aaltoWorld(4, 3.5), aaltoWorld(4, 1), aaltoWorld(-9, 1)]) {
-    await walk('z', q.z);
-    await walk('x', q.x);
-  }
+  const route = [aaltoWorld(14, 3.5), aaltoWorld(4, 3.5), aaltoWorld(4, 1), aaltoWorld(-9, 1)];
+  for (const point of route) await walkTo(point);
   const archive = INTERIOR_CACHES.find((c) => c.id === 'aalto-archive');
-  await walk('z', archive.z + 0.5);
+  await walkTo({ x: route.at(-1).x, z: archive.z + 0.5 });
   await expect(page.locator('#interact')).toContainText('Arkivskåp');
   await page.screenshot({ path: '.local/aalto-interior.png' });
   await page.keyboard.press('e');
