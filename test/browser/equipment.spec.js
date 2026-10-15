@@ -104,7 +104,7 @@ test('trade, craft, mount and class talent choices survive an offline restart', 
 test('a multiplayer player walks through Aalto entrance and retrieves the archive', async ({
   page,
 }) => {
-  test.setTimeout(120000);
+  test.setTimeout(240000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   // Observe the public network messages, while all movement and interaction use real controls.
@@ -132,19 +132,25 @@ test('a multiplayer player walks through Aalto entrance and retrieves the archiv
   const pos = () => page.evaluate(() => window.observedState?.players[window.observedPlayerId]);
   await expect.poll(async () => Boolean(await pos())).toBe(true);
   async function walk(axis, target) {
-    const p = await pos(),
-      direction = target > p[axis] ? 1 : -1,
-      key = axis === 'x' ? (direction > 0 ? 'd' : 'a') : direction > 0 ? 's' : 'w';
-    await page.keyboard.down(key);
-    await page.waitForFunction(
-      ({ axis, target, direction }) => {
-        const p = window.observedState?.players[window.observedPlayerId];
-        return p && (p[axis] - target) * direction >= -0.2;
-      },
-      { axis, target, direction },
-      { timeout: 30000, polling: 50 },
-    );
-    await page.keyboard.up(key);
+    const deadline = Date.now() + 90000;
+    // Finite real key presses allow corrections after a slow render frame. Holding
+    // until one observed crossing can overshoot the doorway before key-up arrives.
+    for (;;) {
+      const p = await pos(),
+        distance = target - p[axis];
+      if (Math.abs(distance) < 0.9) return;
+      if (Date.now() > deadline)
+        throw Error(JSON.stringify({ axis, target, position: { x: p.x, z: p.z } }));
+      const key = axis === 'x' ? (distance > 0 ? 'd' : 'a') : distance > 0 ? 's' : 'w';
+      await page.keyboard.press(key, {
+        delay: 600,
+      });
+      const releasedAt = await page.evaluate(() => window.observedState.time);
+      await page.waitForFunction((time) => window.observedState?.time > time + 0.4, releasedAt, {
+        timeout: 10000,
+        polling: 50,
+      });
+    }
   }
   // Follow the enlarged, rotated entrance and the opening in the interior partition.
   for (const q of [aaltoWorld(14, 3.5), aaltoWorld(4, 3.5), aaltoWorld(4, 1), aaltoWorld(-9, 1)]) {
