@@ -105,9 +105,10 @@ function resetInput() {
   keys.clear();
   mouse.down = false;
   mouse.ads = false;
-  if (world.players[myId]) world.players[myId].input = cleanInput();
+  const neutral = cleanInput({ aim: look.yaw, pitch: look.pitch, crouch });
+  if (world.players[myId]) world.players[myId].input = neutral;
   if (socket?.readyState === WebSocket.OPEN)
-    socket.send(JSON.stringify({ type: 'input', input: cleanInput() }));
+    socket.send(JSON.stringify({ type: 'input', input: neutral }));
 }
 function status(message) {
   $('menu-status').textContent = message;

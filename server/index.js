@@ -177,7 +177,11 @@ export function createGameServer({
         send(ws, { type: 'admin_result', ...adminAction(room.world, playerId, msg.action) });
     });
     ws.staleInput = () => {
-      if (room && Date.now() - lastInput > 500) room.world.players[playerId].input = cleanInput();
+      const player = room?.world.players[playerId];
+      if (player && Date.now() - lastInput > 500) {
+        const { aim, pitch, crouch } = player.input;
+        player.input = cleanInput({ aim, pitch, crouch });
+      }
     };
     ws.on('close', () => {
       clearTimeout(joinDeadline);

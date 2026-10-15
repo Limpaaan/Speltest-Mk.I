@@ -63,15 +63,27 @@ test('two players share authoritative state and another room is isolated', async
   assert.ok(moved.hp <= 160);
   assert.equal(app.rooms.size, 2);
 });
-test('stale input stops movement and rooms are cleaned up after disconnect', async (t) => {
+test('stale input stops held actions, preserves facing and stance, and rooms are cleaned up', async (t) => {
   const { app, url } = await server(t);
   const a = await join(url);
-  a.ws.send(JSON.stringify({ type: 'input', input: { z: 1 } }));
+  a.ws.send(
+    JSON.stringify({
+      type: 'input',
+      input: { z: 1, aim: 4.197, pitch: 0.66, crouch: true, ads: true, sprint: true },
+    }),
+  );
   await wait(650);
   const first = (await message(a.ws, 'state')).state.players[a.id];
   await wait(150);
   const second = (await message(a.ws, 'state')).state.players[a.id];
   assert.equal(second.z, first.z);
+  for (const player of [first, second]) {
+    assert.equal(player.aim, 4.197);
+    assert.equal(player.pitch, 0.66);
+    assert.equal(player.crouch, true);
+    assert.equal(player.ads, false);
+    assert.equal(player.sprinting, false);
+  }
   a.ws.close();
   await wait(80);
   assert.equal(app.rooms.size, 0);
